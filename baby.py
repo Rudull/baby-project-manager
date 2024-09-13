@@ -10,18 +10,24 @@ from workalendar.america import Colombia
 class StateButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(20, 20)
+        self.setFixedSize(25, 25)
         self.setStyleSheet("background-color: red;")
         self.is_editing = True
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.toggle_visibility)
+        self.timer.timeout.connect(self.toggle_color)
         self.timer.start(500)  # Parpadeo cada 500 ms
+        self.current_color = "red"
 
-    def toggle_visibility(self):
+    def toggle_color(self):
         if self.is_editing:
-            self.setVisible(not self.isVisible())
+            if self.current_color == "red":
+                self.setStyleSheet("background-color: gray;")
+                self.current_color = "gray"
+            else:
+                self.setStyleSheet("background-color: red;")
+                self.current_color = "red"
         else:
-            self.setVisible(True)
+            self.setStyleSheet("background-color: blue;")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -32,11 +38,11 @@ class StateButton(QPushButton):
         self.is_editing = not self.is_editing
         if self.is_editing:
             self.setStyleSheet("background-color: red;")
+            self.current_color = "red"
             self.timer.start(500)
         else:
             self.setStyleSheet("background-color: blue;")
             self.timer.stop()
-            self.setVisible(True)
 
 class Task:
     def __init__(self, name, start_date, end_date, dedication):
@@ -457,7 +463,7 @@ class MainWindow(QMainWindow):
                 if col == 0:
                     widget = self.task_table.cellWidget(current_row + 1, col)
                     new_widget = self.create_state_button()
-                    new_widget.is_editing = widget.is_editing
+                    #new_widget.is_editing = widget.is_editing
                     new_widget.toggle_state()  # Para aplicar el estilo correcto
                     self.task_table.setCellWidget(current_row - 1, col, new_widget)
                 else:
@@ -475,7 +481,7 @@ class MainWindow(QMainWindow):
                 if col == 0:
                     widget = self.task_table.cellWidget(current_row, col)
                     new_widget = self.create_state_button()
-                    new_widget.is_editing = widget.is_editing
+                    #new_widget.is_editing = widget.is_editing
                     new_widget.toggle_state()  # Para aplicar el estilo correcto
                     self.task_table.setCellWidget(current_row + 2, col, new_widget)
                 else:
