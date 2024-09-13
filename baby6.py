@@ -15,7 +15,7 @@ class ProgressBarCanvas(QWidget):
         self.min_date = min_date
         self.max_date = max_date
 
-    def setDates(self, start_date, end_date, min_date, max_date):
+    def setDates(self, start_date, end_date, min_date, max_datae):
         self.start_date = start_date
         self.end_date = end_date
         self.min_date = min_date
