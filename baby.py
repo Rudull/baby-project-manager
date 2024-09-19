@@ -86,7 +86,7 @@ class StateButton(QPushButton):
                 self.setStyleSheet("background-color: red;")
                 self.current_color = "red"
         else:
-            self.setStyleSheet("background-color: blue;")
+            self.setStyleSheet("background-color: rgb(34,151,153);") #color boton de filas
 
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
@@ -100,7 +100,7 @@ class StateButton(QPushButton):
             self.current_color = "red"
             self.timer.start(500)
         else:
-            self.setStyleSheet("background-color: blue;")
+            self.setStyleSheet("background-color: rgb(34,151,153);") #color boton de filas
             self.timer.stop()
 
 class Task:
@@ -110,7 +110,7 @@ class Task:
         self.end_date = end_date
         self.duration = duration
         self.dedication = dedication
-        self.color = color or QColor(0, 128, 0)
+        self.color = color or QColor(34,163,159)
         self.notes = notes
 
 class GanttHeaderView(QWidget):
@@ -182,12 +182,10 @@ class GanttHeaderView(QWidget):
             painter.setPen(self.year_color)
             painter.drawText(year_rect, Qt.AlignCenter, str(year))
 
-        # Dibujar la línea vertical para el día de hoy
+        # Dibujar la etiqueta para el día de hoy
         today = QDate.currentDate()
         if self.min_date <= today <= self.max_date:
             today_x = self.min_date.daysTo(today) * self.pixels_per_day - self.scroll_offset
-            painter.setPen(QPen(Qt.red, 2))
-            painter.drawLine(int(today_x), 0, int(today_x), self.height())
 
             # Dibuja la etiqueta "Hoy" con un fondo gris redondeado
             label_width = 50
@@ -202,7 +200,7 @@ class GanttHeaderView(QWidget):
 
             # Dibuja el texto "Hoy"
             painter.setFont(QFont("Arial", 9, QFont.Bold))
-            painter.setPen(Qt.white)
+            painter.setPen(QColor(242,211,136)) #color del texto del día de hoy
             painter.drawText(QRectF(label_x, label_y, label_width, label_height), Qt.AlignCenter, "Hoy")
 
         painter.end()
@@ -234,7 +232,7 @@ class GanttChart(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setMouseTracking(True)
         self.update_colors()
-        self.today_line_color = QColor(255, 0, 0)  # Rojo para la línea "Hoy"
+        self.today_line_color = QColor(242,211,136)  # Color para la línea "Hoy"
         self.double_click_occurred = False  # Bandera para controlar doble clic
 
     def update_colors(self):
@@ -765,7 +763,7 @@ class MainWindow(QMainWindow):
             'END': QDate.currentDate().toString("dd/MM/yyyy"),
             'DURATION': "1",
             'DEDICATION': "100",
-            'COLOR': QColor(0, 128, 0).name()
+            'COLOR': QColor(34,163,159).name()
         }
         self.task_table_widget.add_task_to_table(task_data, editable=True)
         self.adjust_row_heights()
@@ -867,7 +865,7 @@ class MainWindow(QMainWindow):
                 'END': QDate.currentDate().toString("dd/MM/yyyy"),
                 'DURATION': "1",
                 'DEDICATION': "100",
-                'COLOR': QColor(0, 128, 0).name()
+                'COLOR': QColor(34,163,159).name()
             }
             self.task_table_widget.add_task_to_table(task_data, editable=True)
             self.update_gantt_chart()
@@ -917,7 +915,7 @@ class MainWindow(QMainWindow):
                 task.end_date = self.task_table_widget.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
                 task.duration = self.task_table_widget.task_table.cellWidget(row, 4).text()
                 task.dedication = self.task_table_widget.task_table.cellWidget(row, 5).text()
-                task.color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
+                task.color = name_item.data(Qt.UserRole) or QColor(34,163,159)
                 self.tasks.append(task)
 
         if self.tasks:
@@ -982,7 +980,7 @@ class MainWindow(QMainWindow):
             'END': end_date.toString("dd/MM/yyyy"),
             'DURATION': "5",  # 5 días hábiles en una semana
             'DEDICATION': "100",
-            'COLOR': QColor(0, 128, 0).name(),
+            'COLOR': QColor(34,163,159).name(),
             'NOTES': "Esta es una tarea de ejemplo."
         }
         self.task_table_widget.add_task_to_table(task_data, editable=True)

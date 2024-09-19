@@ -1,28 +1,40 @@
 a## Road Map
 
+1. Las notas gaurdadas solo cargan la primera fila de texto
+10. Reineciar color por defecto Gantt
+13. Mostrar dias restantes en ventana de informacion de barras Gantt
 1. Cundo se abre otro proyecto no se pregunta si se desean guardas los cambios
-10. colocar menu de tareas a barras de Gantt
-1. Mostrar 1 semana, 1 mes o 1 año en el diagrama de Gantt
-2. Dibujar linea de separacion de acuerdo al periodo selecciodo
-4. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
-5. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
-7. Sombrear tarea seleccionada
-11. Extender lineas vertivales da año al Gantt
-13. Reineciar color por defecto Gantt
-14. Implementar Ctr+S
-15. Reescalar encabezado Gantt
-16. Mostrar dias restantes en ventana de informacion de barras Gantt
-18. Implementar arrastrar y soltar
-20.
+15. Cuando se inecia le listado de tareas nuevo desde el menu este no coloca la primera tarea por defecto
+2. La ventana emengente de las barras de Gantt salen por fuera de la pantalla
+3. colocar menu de tareas a barras de Gantt
+4. Mostrar 1 semana, 1 mes o 1 año en el diagrama de Gantt
+5. Dibujar linea de separacion de acuerdo al periodo selecciodo
+6. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
+7. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
+8. Sombrear tarea seleccionada
+9. Extender lineas vertivales da año al Gantt
+11. Implementar Ctr+S
+12. Reescalar encabezado Gantt
+14. Implementar arrastrar y soltar
+15. Implementar que el panel de la lista de tareas re pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
+15. https://paletadecolores.online/oscuros/
+16. https://colorhunt.co/
+17. https://colorhunt.co/palette/f3efe043424222222222a39f
 
+self.setStyleSheet("background-color: rgb(
+
+task.color = name_item.data(Qt.UserRole) or QColor(119,41,83)
+Color(34,163,159)
 - 72 en hexadecimal = 114 en decimal
 - ab en hexadecimal = 171 en decimal
 - e6 en hexadecimal = 230 en decimal
 self.color = color or QColor("#72abe6")
 self.color = color or QColor(114, 171, 230)
 
-
+color = QColor(119, 33, 111)
+# O también
+color = QColor("#77216F")
 
 
 Implementar arrastrar y soltar tareas en un programa de administración de tareas con una interfaz gráfica en PySide6 es completamente factible. Esto se puede lograr sobreescribiendo ciertos métodos de eventos en las clases del widget correspondiente. A continuación, desglosaré los pasos para implementar esta funcionalidad en el código que compartiste:
