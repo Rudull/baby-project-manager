@@ -18,6 +18,12 @@ a## Road Map
 20.
 
 
+- 72 en hexadecimal = 114 en decimal
+- ab en hexadecimal = 171 en decimal
+- e6 en hexadecimal = 230 en decimal
+self.color = color or QColor("#72abe6")
+self.color = color or QColor(114, 171, 230)
+
 
 Para lograr que la ventana de información que se despliega con un clic simple sobre las barras de Gantt permita introducir notas editables cada vez que se accede a la ventana, necesitas realizar los siguientes cambios en tu código:
 
