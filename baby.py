@@ -1,11 +1,14 @@
+ #Escribe todo el código por mí con las modificaciones
 import sys
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                               QPushButton, QLineEdit, QLabel, QDateEdit, QScrollArea, QTableWidget,
-                               QTableWidgetItem, QHeaderView, QMenu, QScrollBar, QFileDialog, QMessageBox)
-from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette
-from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent
-from datetime import timedelta, date
+from datetime import timedelta
 from workalendar.america import Colombia
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QLineEdit, QLabel, QDateEdit, QScrollArea, QTableWidget, QTableWidgetItem,
+    QHeaderView, QMenu, QScrollBar, QFileDialog, QMessageBox, QColorDialog
+)
+from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette
+from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal
 
 class FloatingTaskMenu(QWidget):
     def __init__(self, task_name, start_date, end_date, parent=None):
@@ -16,7 +19,7 @@ class FloatingTaskMenu(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        name_label = QLabel(f"<b>{task_name}</b>")
+        name_label = QLabel(f"{task_name}")
         start_label = QLabel(f"Inicio: {start_date}")
         end_label = QLabel(f"Fin: {end_date}")
 
@@ -35,10 +38,8 @@ class FloatingTaskMenu(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
         painter.setBrush(self.background_color)
         painter.setPen(Qt.NoPen)
-
         path = QPainterPath()
         path.addRoundedRect(QRectF(self.rect()), 10, 10)
         painter.drawPath(path)
@@ -89,11 +90,13 @@ class StateButton(QPushButton):
             self.timer.stop()
 
 class Task:
-    def __init__(self, name, start_date, end_date, dedication):
+    def __init__(self, name, start_date, end_date, duration, dedication, color=None):
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
+        self.duration = duration
         self.dedication = dedication
+        self.color = color or QColor(0, 128, 0)  # Color verde por defecto
 
 class GanttHeaderView(QWidget):
     def __init__(self, parent=None):
@@ -113,7 +116,6 @@ class GanttHeaderView(QWidget):
 
         # Determinar si estamos en modo claro u oscuro
         is_light_mode = palette.color(QPalette.Window).lightness() > 128
-
         if is_light_mode:
             # Modo claro: usar gris oscuro
             self.year_color = QColor(80, 80, 80)  # Gris oscuro
@@ -137,7 +139,6 @@ class GanttHeaderView(QWidget):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
         painter.fillRect(event.rect(), self.background_color)
 
         year_font = QFont("Arial", 10, QFont.Bold)
@@ -149,7 +150,6 @@ class GanttHeaderView(QWidget):
         for year in range(start_year, end_year + 1):
             year_start = QDate(year, 1, 1)
             year_end = QDate(year, 12, 31)
-
             if year_start < self.min_date:
                 year_start = self.min_date
             if year_end > self.max_date:
@@ -163,12 +163,11 @@ class GanttHeaderView(QWidget):
             painter.drawLine(int(end_x), 0, int(end_x), self.header_height)
 
             year_width = end_x - start_x
-
             year_rect = QRect(int(start_x), 0, int(year_width), self.header_height)
             painter.setPen(self.year_color)
             painter.drawText(year_rect, Qt.AlignCenter, str(year))
 
-        # Dibuja la línea vertical para el día de hoy
+        # Dibujar la línea vertical para el día de hoy
         today = QDate.currentDate()
         if self.min_date <= today <= self.max_date:
             today_x = self.min_date.daysTo(today) * self.pixels_per_day - self.scroll_offset
@@ -204,6 +203,9 @@ class GanttHeaderView(QWidget):
         super().changeEvent(event)
 
 class GanttChart(QWidget):
+    colorChanged = Signal(int, QColor)
+    SINGLE_CLICK_INTERVAL = 100  # Intervalo en milisegundos para el clic simple
+
     def __init__(self, tasks, row_height, header_height):
         super().__init__()
         self.tasks = tasks
@@ -218,6 +220,7 @@ class GanttChart(QWidget):
         self.setMouseTracking(True)
         self.update_colors()
         self.today_line_color = QColor(255, 0, 0)  # Rojo para la línea "Hoy"
+        self.double_click_occurred = False  # Bandera para controlar doble clic
 
     def update_colors(self):
         palette = self.palette()
@@ -236,29 +239,70 @@ class GanttChart(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            task_index = int(event.y() / self.row_height)
+            self.double_click_occurred = False
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Almacenar las posiciones
+            self.click_pos = event.position().toPoint()
+            self.click_global_pos = event.globalPosition().toPoint()
+            # Iniciar el temporizador para el clic simple
+            self.single_click_timer = QTimer()
+            self.single_click_timer.setSingleShot(True)
+            self.single_click_timer.timeout.connect(self.handle_single_click)
+            self.single_click_timer.start(self.SINGLE_CLICK_INTERVAL)
+        super().mouseReleaseEvent(event)
+
+    def handle_single_click(self):
+        if not self.double_click_occurred:
+            task_index = int(self.click_pos.y() / self.row_height)
             if 0 <= task_index < len(self.tasks):
                 task = self.tasks[task_index]
-                self.show_floating_menu(event.globalPos(), task)
+                self.show_floating_menu(self.click_global_pos, task)
+        # Restablecer la bandera
+        self.double_click_occurred = False
+
+    def mouseDoubleClickEvent(self, event):
+        self.double_click_occurred = True
+        if hasattr(self, 'single_click_timer'):
+            self.single_click_timer.stop()
+
+        x = int(event.position().x())
+        y = int(event.position().y())
+        row_height = self.row_height
+
+        # Determinar el índice de la tarea basada en la posición Y
+        task_index = int(y / row_height)
+        if 0 <= task_index < len(self.tasks):
+            task = self.tasks[task_index]
+
+            # Calcular la posición X de inicio y fin de la barra de la tarea
+            start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
+            end_date = QDate.fromString(task.end_date, "dd/MM/yyyy")
+            task_start_x = self.min_date.daysTo(start_date) * self.pixels_per_day
+            task_end_x = self.min_date.daysTo(end_date) * self.pixels_per_day
+
+            # Verificar si el doble clic fue dentro de la barra de la tarea
+            if task_start_x <= x <= task_end_x:
+                # Abrir el diálogo de selección de color
+                color = QColorDialog.getColor(initial=task.color, parent=self)
+                if color.isValid():
+                    # Actualizar el color de la tarea
+                    task.color = color
+                    self.update()
+                    # Emitir señal para actualizar la tabla
+                    self.colorChanged.emit(task_index, color)
+        super().mouseDoubleClickEvent(event)
 
     def show_floating_menu(self, position, task):
         if self.floating_menu:
             self.floating_menu.close()
-
         self.floating_menu = FloatingTaskMenu(
-            task.name,
-            task.start_date,
-            task.end_date,
-            self
+            task.name, task.start_date, task.end_date, self
         )
         self.floating_menu.move(position)
         self.floating_menu.show()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and self.floating_menu:
-            if not self.floating_menu.geometry().contains(event.globalPos()):
-                self.floating_menu.close()
-                self.floating_menu = None
 
     def paintEvent(self, event):
         if not self.min_date or not self.max_date or not self.pixels_per_day:
@@ -266,13 +310,11 @@ class GanttChart(QWidget):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
         painter.fillRect(event.rect(), self.background_color)
 
-        for task in self.tasks:
+        for i, task in enumerate(self.tasks):
             start = QDate.fromString(task.start_date, "dd/MM/yyyy")
             end = QDate.fromString(task.end_date, "dd/MM/yyyy")
-
             if end < self.min_date or start > self.max_date:
                 continue
 
@@ -281,12 +323,14 @@ class GanttChart(QWidget):
 
             x = self.min_date.daysTo(start) * self.pixels_per_day
             width = start.daysTo(end) * self.pixels_per_day
+            y = i * self.row_height
 
-            y = self.tasks.index(task) * self.row_height
+            # Añadir un pequeño ajuste para alinear perfectamente con las filas de la tabla
+            y_adjusted = y + 1  # Puede necesitar ajustar este valor
 
-            painter.setBrush(QBrush(self.task_color))
+            painter.setBrush(QBrush(task.color))
             painter.setPen(Qt.NoPen)
-            painter.drawRect(QRectF(x, y, width, self.row_height))
+            painter.drawRect(QRectF(x, y_adjusted, width, self.row_height - 2))  # -2 para dejar un pequeño espacio
 
         # Dibujar la línea vertical para el día de hoy
         today = QDate.currentDate()
@@ -312,7 +356,6 @@ class GanttWidget(QWidget):
 
         self.header = GanttHeaderView()
         self.chart = GanttChart(tasks, row_height, self.header.header_height)
-
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -328,13 +371,14 @@ class GanttWidget(QWidget):
 
         # Establecer el widget contenedor como widget del área de desplazamiento
         self.scroll_area.setWidget(self.content_widget)
-
         self.layout.addWidget(self.scroll_area)
 
         self.scroll_area.horizontalScrollBar().valueChanged.connect(self.sync_horizontal_scroll)
 
     def sync_horizontal_scroll(self, value):
         self.header.scrollTo(value)
+        # Añadir un pequeño retraso para asegurar que la sincronización sea suave
+        QTimer.singleShot(10, lambda: self.chart.update())
 
     def update_parameters(self, min_date, max_date, pixels_per_day):
         self.header.update_parameters(min_date, max_date, pixels_per_day)
@@ -353,38 +397,45 @@ class TaskTableWidget(QWidget):
         self.task_table = QTableWidget(0, 6, self)
         self.task_table.setHorizontalHeaderLabels(["", "Nombre", "Fecha inicial", "Fecha final", "Días", "%"])
         self.task_table.verticalHeader().setVisible(False)
-
         self.main_layout.addWidget(self.task_table)
 
         self.menu_button = QPushButton("☰", self)
         self.menu_button.clicked.connect(self.show_menu)
-
         QTimer.singleShot(0, self.adjust_button_size)
 
         self.current_file_path = None
+        self.setup_table_style()
+
+    def setup_table_style(self):
+        self.task_table.setStyleSheet("""
+        QTableWidget {
+            gridline-color: transparent;
+            border: none;
+        }
+        QTableWidget::item {
+            padding: 0px;
+            border: none;
+        }
+        """)
+        self.task_table.verticalHeader().setDefaultSectionSize(self.main_window.ROW_HEIGHT)
+        self.task_table.verticalHeader().setMinimumSectionSize(self.main_window.ROW_HEIGHT)
 
     def adjust_button_size(self):
         header = self.task_table.horizontalHeader()
         header_height = header.height()
-
         button_width = int(header_height * 1.3)
-
         self.menu_button.setFixedSize(QSize(button_width, header_height))
         self.menu_button.move(0, header.pos().y())
 
         self.task_table.setColumnWidth(0, button_width)
-
         available_width = self.task_table.width() - button_width
-
         name_width = int(available_width * 0.30)
         date_width = int(available_width * 0.21)
         duration_width = int(available_width * 0.09)
         dedication_width = int(available_width * 0.075)
 
         new_name_width = int(name_width * 1.3)
-
         new_total_width = button_width + new_name_width + (2 * date_width) + duration_width + dedication_width
-
         self.task_table.setMinimumWidth(new_total_width)
 
         self.task_table.setColumnWidth(1, new_name_width)
@@ -421,26 +472,21 @@ class TaskTableWidget(QWidget):
         export_menu.addAction("XLSX")
 
         config_menu = menu.addMenu("Configuración")
-
         view_menu = config_menu.addMenu("Vista")
         view_menu.addAction("Semana")
         view_menu.addAction("Mes")
         view_menu.addAction("Año")
-
         appearance_menu = config_menu.addMenu("Apariencia")
         appearance_menu.addAction("Modo claro")
         appearance_menu.addAction("Modo oscuro")
-
         language_menu = config_menu.addMenu("Idioma")
         language_menu.addAction("Español")
         language_menu.addAction("Inglés")
         language_menu.addAction("Alemán")
         language_menu.addAction("Francés")
-
         region_menu = config_menu.addMenu("Región")
         region_menu.addAction("Detectar automáticamente")
         region_menu.addAction("Seleccionar país")
-
         config_menu.addAction("API AI")
         config_menu.addAction("Abrir al iniciar el OS")
         config_menu.addAction("Alertas")
@@ -448,7 +494,6 @@ class TaskTableWidget(QWidget):
         menu.addAction("Acerca de")
 
         action = menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
-
         if action:
             print(f"Acción seleccionada: {action.text()}")
 
@@ -464,10 +509,7 @@ class TaskTableWidget(QWidget):
 
     def save_file_as(self):
         file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Guardar como",
-            "",
-            "Archivos BPM (*.bpm);;Todos los archivos (*)"
+            self, "Guardar como", "", "Archivos BPM (*.bpm);;Todos los archivos (*)"
         )
         if file_path:
             if not file_path.lower().endswith('.bpm'):
@@ -477,10 +519,7 @@ class TaskTableWidget(QWidget):
 
     def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Abrir archivo",
-            "",
-            "Archivos BPM (*.bpm);;Todos los archivos (*)"
+            self, "Abrir archivo", "", "Archivos BPM (*.bpm);;Todos los archivos (*)"
         )
         if file_path:
             self.load_tasks_from_file(file_path)
@@ -494,6 +533,10 @@ class TaskTableWidget(QWidget):
                     end_date = self.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
                     duration = self.task_table.cellWidget(row, 4).text()
                     dedication = self.task_table.cellWidget(row, 5).text()
+                    # Obtener el color del elemento de nombre
+                    name_item = self.task_table.item(row, 1)
+                    color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
+                    color_str = color.name()  # Convertir a string hexadecimal
 
                     file.write("[TASK]\n")
                     file.write(f"NAME: {task_name}\n")
@@ -501,6 +544,7 @@ class TaskTableWidget(QWidget):
                     file.write(f"END: {end_date}\n")
                     file.write(f"DURATION: {duration}\n")
                     file.write(f"DEDICATION: {dedication}\n")
+                    file.write(f"COLOR: {color_str}\n")
                     file.write("[/TASK]\n\n")
 
             self.current_file_path = file_path
@@ -542,7 +586,14 @@ class TaskTableWidget(QWidget):
         self.task_table.setCellWidget(row_position, 0, state_button)
 
         # Nombre de la tarea
-        self.task_table.setItem(row_position, 1, QTableWidgetItem(task_data['NAME']))
+        name_item = QTableWidgetItem(task_data['NAME'])
+        # Almacenar el color en los datos del elemento
+        if 'COLOR' in task_data:
+            color = QColor(task_data['COLOR'])
+        else:
+            color = QColor(0, 128, 0)  # Color por defecto
+        name_item.setData(Qt.UserRole, color)
+        self.task_table.setItem(row_position, 1, name_item)
 
         # Fecha inicial
         start_date = QDateEdit()
@@ -577,30 +628,28 @@ class TaskTableWidget(QWidget):
 
         self.task_table.setRowHeight(row_position, self.main_window.ROW_HEIGHT)
 
-        # Conectar el botón de estado con la función de toggle
-        state_button.clicked.connect(lambda: self.toggle_row_state(row_position))
+        # Conectar el botón de estado con el nuevo método
+        state_button.clicked.connect(self.toggle_row_state)
 
-    def toggle_row_state(self, row):
-        state_button = self.task_table.cellWidget(row, 0)
-        is_editable = state_button.is_editing
-
-        for col in range(2, 6):  # Columnas de fecha inicial, fecha final, días y dedicación
+    def toggle_row_state(self):
+        state_button = self.sender()
+        index = self.task_table.indexAt(state_button.pos())
+        row = index.row()
+        is_editing = state_button.is_editing
+        for col in range(2, 6):  # Columnas: Fecha inicial, Fecha final, Días, Dedicación
             widget = self.task_table.cellWidget(row, col)
             if isinstance(widget, QDateEdit):
-                widget.setReadOnly(not is_editable)
+                widget.setReadOnly(not is_editing)
             elif isinstance(widget, QLineEdit):
-                widget.setReadOnly(not is_editable)
+                widget.setReadOnly(not is_editing)
 
     def new_project(self):
         if self.main_window.unsaved_changes:
             reply = QMessageBox.question(
-                self,
-                'Cambios sin guardar',
-                '¿Hay cambios sin guardar. ¿Desea guardar antes de crear un nuevo proyecto?',
-                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                QMessageBox.Save
+                self, 'Cambios sin guardar',
+                'Hay cambios sin guardar. ¿Desea guardar antes de crear un nuevo proyecto?',
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Save
             )
-
             if reply == QMessageBox.Save:
                 self.save_file()
             elif reply == QMessageBox.Cancel:
@@ -608,89 +657,12 @@ class TaskTableWidget(QWidget):
 
         # Limpiar la tabla de tareas
         self.task_table.setRowCount(0)
-
         # Reinicializar variables
         self.current_file_path = None
         self.main_window.unsaved_changes = False
-
         # Actualizar el gráfico de Gantt
         self.main_window.update_gantt_chart()
-
         print("Nuevo proyecto creado")
-
-class Task:
-    def __init__(self, name, start_date, end_date, duration, dedication):
-        self.name = name
-        self.start_date = start_date
-        self.end_date = end_date
-        self.duration = duration
-        self.dedication = dedication
-
-    def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Abrir archivo",
-            "",
-            "Archivos de texto (*.txt);;Archivos CSV (*.csv);;Todos los archivos (*.*)"
-        )
-        if file_path:
-            self.load_tasks_from_file(file_path)
-
-    def load_tasks_from_file(self, file_path):
-        try:
-            self.task_table.setRowCount(0)  # Limpia la tabla actual
-            with open(file_path, 'r') as file:
-                lines = file.readlines()
-                for line in lines[1:]:  # Ignora la primera línea si es un encabezado
-                    task_data = line.strip().split(',')
-                    if len(task_data) == 5:  # Asegúrate de que haya 5 campos
-                        self.add_task_to_table(task_data)
-            self.current_file_path = file_path
-            self.main_window.unsaved_changes = False
-            print(f"Archivo cargado desde: {file_path}")
-            self.main_window.update_gantt_chart()
-        except Exception as e:
-            print(f"Error al cargar el archivo: {e}")
-
-    def add_task_to_table(self, task_data):
-        row_position = self.task_table.rowCount()
-        self.task_table.insertRow(row_position)
-
-        # Botón de estado
-        state_button = StateButton()
-        self.task_table.setCellWidget(row_position, 0, state_button)
-
-        # Nombre de la tarea
-        self.task_table.setItem(row_position, 1, QTableWidgetItem(task_data[0]))
-
-        # Fecha inicial
-        start_date = QDateEdit()
-        start_date.setDate(QDate.fromString(task_data[1], "dd/MM/yyyy"))
-        start_date.setCalendarPopup(True)
-        start_date.setDisplayFormat("dd/MM/yyyy")
-        self.task_table.setCellWidget(row_position, 2, start_date)
-
-        # Fecha final
-        end_date = QDateEdit()
-        end_date.setDate(QDate.fromString(task_data[2], "dd/MM/yyyy"))
-        end_date.setCalendarPopup(True)
-        end_date.setDisplayFormat("dd/MM/yyyy")
-        self.task_table.setCellWidget(row_position, 3, end_date)
-
-        # Duración
-        duration = QLineEdit(task_data[3])
-        self.task_table.setCellWidget(row_position, 4, duration)
-
-        # Dedicación
-        dedication = QLineEdit(task_data[4])
-        self.task_table.setCellWidget(row_position, 5, dedication)
-
-        # Conectar señales
-        start_date.dateChanged.connect(lambda: self.main_window.validateAndCalculateDays(start_date, end_date, duration))
-        end_date.dateChanged.connect(lambda: self.main_window.validateAndCalculateDays(start_date, end_date, duration))
-        duration.textChanged.connect(lambda: self.main_window.calculateEndDateIfChanged(start_date, duration, end_date))
-
-        self.task_table.setRowHeight(row_position, self.main_window.ROW_HEIGHT)
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
@@ -734,6 +706,9 @@ class MainWindow(QMainWindow):
         self.gantt_chart = self.gantt_widget.chart
         self.scroll_area = self.gantt_widget.scroll_area
 
+        # Conectar la señal colorChanged
+        self.gantt_chart.colorChanged.connect(self.update_task_color)
+
         main_layout.addWidget(self.gantt_widget, 1)
 
         main_widget.setLayout(main_layout)
@@ -753,36 +728,30 @@ class MainWindow(QMainWindow):
             else:
                 self.task_table.verticalScrollBar().setValue(sender.value())
 
-    def create_state_button(self):
-        button = StateButton()
-        button.clicked.connect(lambda: self.toggle_row_state(button))
-        return button
-
-    def toggle_row_state(self, button):
-        row = self.task_table.indexAt(button.pos()).row()
-        is_editing = button.is_editing
-        for col in range(2, 6):  # Columnas de fecha inicial, fecha final, días y dedicación
-            widget = self.task_table.cellWidget(row, col)
-            if isinstance(widget, QDateEdit):
-                widget.setReadOnly(not is_editing)
-            elif isinstance(widget, QLineEdit):
-                widget.setReadOnly(not is_editing)
-
     def add_new_task(self):
         task_data = {
             'NAME': "Nueva Tarea",
             'START': QDate.currentDate().toString("dd/MM/yyyy"),
             'END': QDate.currentDate().toString("dd/MM/yyyy"),
             'DURATION': "1",
-            'DEDICATION': "100"
+            'DEDICATION': "100",
+            'COLOR': QColor(0, 128, 0).name()
         }
         self.task_table_widget.add_task_to_table(task_data, editable=True)
+        self.adjust_row_heights()
         self.update_gantt_chart()
         self.unsaved_changes = True
 
     def adjust_all_row_heights(self):
         for row in range(self.task_table.rowCount()):
             self.task_table.setRowHeight(row, self.ROW_HEIGHT)
+
+    def adjust_row_heights(self):
+        for row in range(self.task_table.rowCount()):
+            self.task_table.setRowHeight(row, self.ROW_HEIGHT)
+        # Forzar la actualización del diseño
+        self.task_table.updateGeometry()
+        self.gantt_widget.chart.update()
 
     def validateAndCalculateDays(self, start_entry, end_entry, days_entry):
         cal = Colombia()
@@ -793,7 +762,8 @@ class MainWindow(QMainWindow):
             end_entry.setDate(QDate(start_date))
             end_date = start_date
 
-        business_days = sum(1 for day in (start_date + timedelta(n) for n in range((end_date - start_date).days + 1)) if cal.is_working_day(day))
+        business_days = sum(1 for day in (start_date + timedelta(n) for n in range((end_date - start_date).days + 1))
+                            if cal.is_working_day(day))
         days_entry.setText(str(business_days))
         self.unsaved_changes = True
         self.update_gantt_chart()
@@ -801,16 +771,20 @@ class MainWindow(QMainWindow):
     def calculateEndDateIfChanged(self, start_entry, days_entry, end_entry):
         if not days_entry.text().isdigit():
             return
+
         cal = Colombia()
         start_date = start_entry.date().toPython()
         days = int(days_entry.text())
+
         end_date = start_date
         if cal.is_working_day(start_date):
             days -= 1
+
         while days > 0:
             end_date += timedelta(1)
             if cal.is_working_day(end_date):
                 days -= 1
+
         end_entry.setDate(QDate(end_date))
         self.unsaved_changes = True
         self.update_gantt_chart()
@@ -824,7 +798,6 @@ class MainWindow(QMainWindow):
         delete_action = menu.addAction("Eliminar")
 
         action = menu.exec(self.task_table.viewport().mapToGlobal(position))
-
         if action == duplicate_action:
             self.duplicate_task()
         elif action == insert_action:
@@ -844,7 +817,8 @@ class MainWindow(QMainWindow):
                 'START': self.task_table.cellWidget(current_row, 2).date().toString("dd/MM/yyyy"),
                 'END': self.task_table.cellWidget(current_row, 3).date().toString("dd/MM/yyyy"),
                 'DURATION': self.task_table.cellWidget(current_row, 4).text(),
-                'DEDICATION': self.task_table.cellWidget(current_row, 5).text()
+                'DEDICATION': self.task_table.cellWidget(current_row, 5).text(),
+                'COLOR': self.task_table.item(current_row, 1).data(Qt.UserRole).name()
             }
             self.task_table_widget.add_task_to_table(task_data, editable=True)
             self.update_gantt_chart()
@@ -858,7 +832,8 @@ class MainWindow(QMainWindow):
                 'START': QDate.currentDate().toString("dd/MM/yyyy"),
                 'END': QDate.currentDate().toString("dd/MM/yyyy"),
                 'DURATION': "1",
-                'DEDICATION': "100"
+                'DEDICATION': "100",
+                'COLOR': QColor(0, 128, 0).name()
             }
             self.task_table_widget.add_task_to_table(task_data, editable=True)
             self.update_gantt_chart()
@@ -869,16 +844,11 @@ class MainWindow(QMainWindow):
         if current_row > 0:
             self.task_table.insertRow(current_row - 1)
             for col in range(self.task_table.columnCount()):
-                if col == 0:
-                    widget = self.task_table.cellWidget(current_row + 1, col)
-                    new_widget = self.create_state_button()
-                    new_widget.toggle_state()  # Para aplicar el estilo correcto
-                    self.task_table.setCellWidget(current_row - 1, col, new_widget)
-                else:
-                    self.task_table.setItem(current_row - 1, col, self.task_table.takeItem(current_row + 1, col))
-                    self.task_table.setCellWidget(current_row - 1, col, self.task_table.cellWidget(current_row + 1, col))
+                self.task_table.setItem(current_row - 1, col, self.task_table.takeItem(current_row + 1, col))
+                self.task_table.setCellWidget(current_row - 1, col, self.task_table.cellWidget(current_row + 1, col))
             self.task_table.removeRow(current_row + 1)
             self.task_table.setCurrentCell(current_row - 1, 1)
+            self.adjust_row_heights()
             self.unsaved_changes = True
             self.update_gantt_chart()
 
@@ -887,16 +857,11 @@ class MainWindow(QMainWindow):
         if current_row < self.task_table.rowCount() - 1:
             self.task_table.insertRow(current_row + 2)
             for col in range(self.task_table.columnCount()):
-                if col == 0:
-                    widget = self.task_table.cellWidget(current_row, col)
-                    new_widget = self.create_state_button()
-                    new_widget.toggle_state()  # Para aplicar el estilo correcto
-                    self.task_table.setCellWidget(current_row + 2, col, new_widget)
-                else:
-                    self.task_table.setItem(current_row + 2, col, self.task_table.takeItem(current_row, col))
-                    self.task_table.setCellWidget(current_row + 2, col, self.task_table.cellWidget(current_row, col))
+                self.task_table.setItem(current_row + 2, col, self.task_table.takeItem(current_row, col))
+                self.task_table.setCellWidget(current_row + 2, col, self.task_table.cellWidget(current_row, col))
             self.task_table.removeRow(current_row)
             self.task_table.setCurrentCell(current_row + 1, 1)
+            self.adjust_row_heights()
             self.unsaved_changes = True
             self.update_gantt_chart()
 
@@ -910,12 +875,14 @@ class MainWindow(QMainWindow):
     def update_gantt_chart(self):
         self.tasks = []
         for row in range(self.task_table_widget.task_table.rowCount()):
-            name = self.task_table_widget.task_table.item(row, 1).text()
+            name_item = self.task_table_widget.task_table.item(row, 1)
+            name = name_item.text()
+            color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
             start_date = self.task_table_widget.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy")
             end_date = self.task_table_widget.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
             duration = self.task_table_widget.task_table.cellWidget(row, 4).text()
             dedication = self.task_table_widget.task_table.cellWidget(row, 5).text()
-            task = Task(name, start_date, end_date, duration, dedication)
+            task = Task(name, start_date, end_date, duration, dedication, color)
             self.tasks.append(task)
 
         if self.tasks:
@@ -933,32 +900,33 @@ class MainWindow(QMainWindow):
 
         self.gantt_widget.update_parameters(min_date, max_date, pixels_per_day)
         self.gantt_chart.tasks = self.tasks
-
+        self.gantt_chart.setMinimumHeight(len(self.tasks) * self.ROW_HEIGHT)
         self.gantt_chart.update()
         self.gantt_header.update()
+
+        # Forzar la actualización del diseño
+        self.gantt_widget.updateGeometry()
+
+    def update_task_color(self, task_index, color):
+        # Obtener el elemento de nombre de la tarea en la tabla
+        name_item = self.task_table_widget.task_table.item(task_index, 1)
+        if name_item:
+            # Actualizar el dato de usuario con el nuevo color
+            name_item.setData(Qt.UserRole, color)
+            self.unsaved_changes = True  # Marcar que hay cambios sin guardar
+            self.update_gantt_chart()
 
     def set_period(self, days):
         self.selected_period = days
         self.update_gantt_chart()
 
-    def load_tasks_from_db(self):
-        # Implementar la carga de tareas desde la base de datos
-        pass
-
-    def save_task_to_db(self, task):
-        # Implementar el guardado de tareas en la base de datos
-        pass
-
     def closeEvent(self, event):
         if self.unsaved_changes:
             reply = QMessageBox.question(
-                self,
-                'Cambios sin guardar',
-                '¿Hay cambios sin guardar. ¿Desea guardar antes de salir?',
-                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                QMessageBox.Save
+                self, 'Cambios sin guardar',
+                'Hay cambios sin guardar. ¿Desea guardar antes de salir?',
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Save
             )
-
             if reply == QMessageBox.Save:
                 self.task_table_widget.save_file()
                 event.accept()

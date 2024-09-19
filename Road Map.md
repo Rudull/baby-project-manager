@@ -1,29 +1,238 @@
-## Road Map
+a## Road Map
 
+8. Cambio de color tarea
+10. colocar menu de tareas a barras de Gantt
+9. Agregar nota en tarea de Gantt
 1. Mostrar 1 semana, 1 mes o 1 año en el diagrama de Gantt
 2. Dibujar linea de separacion de acuerdo al periodo selecciodo
 4. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
 5. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
-6. Alinear el Gantt con las tareas
 7. Sombrear tarea seleccionada
-8. Cambio de color tarea
-9. Agregar nota en tarea de Gantt
-10. colocar menu de tareas a barras de Gantt
 11. Extender lineas vertivales da año al Gantt
-12. Ajustar boton cambia de tamaño cuando se mueve arriba o abajo
 13. Reineciar color por defecto Gantt
 14. Implementar Ctr+S
 15. Reescalar encabezado Gantt
 16. Mostrar dias restantes en ventana de informacion de barras Gantt
-17. Las tareas copiadas despues des ser colocadas en modo no edicion, si se colocan de nuevo en modo edicion, no permiten la edicion aunque si parpadea en rojo
 18. Implementar arrastrar y soltar
 19. Cuando el programa se ejecuta el diagrama de Gantt no ocupat todo el espacio poreble
-20. Cuando la tarea se mueve abajo esta aparece en azul que indeca la no edicion pero realmente esta en modo edicion 
+20.
+
+
+
+Para lograr que la ventana de información que se despliega con un clic simple sobre las barras de Gantt permita introducir notas editables cada vez que se accede a la ventana, necesitas realizar los siguientes cambios en tu código:
+
+    Agregar un atributo de notas a la clase Task:
+
+    python
+
+class Task:
+    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes=""):
+        self.name = name
+        self.start_date = start_date
+        self.end_date = end_date
+        self.duration = duration
+        self.dedication = dedication
+        self.color = color or QColor(0, 128, 0)
+        self.notes = notes
+
+Modificar FloatingTaskMenu para aceptar el objeto Task y permitir edición de notas:
+
+python
+
+from PySide6.QtWidgets import QTextEdit
+
+class FloatingTaskMenu(QWidget):
+    def __init__(self, task, parent=None):
+        super().__init__(parent)
+        self.task = task
+        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        name_label = QLabel(f"{task.name}")
+        start_label = QLabel(f"Inicio: {task.start_date}")
+        end_label = QLabel(f"Fin: {task.end_date}")
+
+        for label in (name_label, start_label, end_label):
+            label.setAlignment(Qt.AlignRight)
+            layout.addWidget(label)
+
+        # Añadir el campo de notas
+        self.notes_edit = QTextEdit(self)
+        self.notes_edit.setPlainText(self.task.notes)
+        layout.addWidget(self.notes_edit)
+
+        self.adjustSize()
+        self.update_colors()
+
+        # Conectar la señal para actualizar las notas del task
+        self.notes_edit.textChanged.connect(self.update_task_notes)
+
+    def update_task_notes(self):
+        self.task.notes = self.notes_edit.toPlainText()
+        # Marcar que hay cambios sin guardar
+        if self.parent() and hasattr(self.parent(), 'main_window'):
+            self.parent().main_window.unsaved_changes = True
+
+Modificar GanttChart para pasar el objeto Task al menú flotante:
+
+python
+
+class GanttChart(QWidget):
+    # ... (resto del código)
+
+    def show_floating_menu(self, position, task):
+        if self.floating_menu:
+            self.floating_menu.close()
+        self.floating_menu = FloatingTaskMenu(task, self)
+        self.floating_menu.move(position)
+        self.floating_menu.show()
+
+Almacenar el objeto Task en el elemento de la tabla:
+
+python
+
+class TaskTableWidget(QWidget):
+    # ... (resto del código)
+
+    def add_task_to_table(self, task_data, editable=False):
+        row_position = self.task_table.rowCount()
+        self.task_table.insertRow(row_position)
+
+        state_button = StateButton()
+        if not editable:
+            state_button.toggle_state()
+        self.task_table.setCellWidget(row_position, 0, state_button)
+
+        # Crear objeto Task
+        task = Task(
+            task_data['NAME'],
+            task_data['START'],
+            task_data['END'],
+            task_data['DURATION'],
+            task_data['DEDICATION'],
+            QColor(task_data.get('COLOR', '#008000')),
+            task_data.get('NOTES', "")
+        )
+
+        # Almacenar el objeto Task en el elemento de nombre
+        name_item = QTableWidgetItem(task.name)
+        name_item.setData(Qt.UserRole, task.color)
+        name_item.setData(Qt.UserRole + 1, task)  # Usamos un rol personalizado
+        self.task_table.setItem(row_position, 1, name_item)
+
+        # ... (resto del código)
+
+Actualizar el método save_tasks_to_file para incluir las notas:
+
+python
+
+def save_tasks_to_file(self, file_path):
+    try:
+        with open(file_path, 'w') as file:
+            for row in range(self.task_table.rowCount()):
+                name_item = self.task_table.item(row, 1)
+                task = name_item.data(Qt.UserRole + 1)
+                if not task:
+                    continue
+                file.write("[TASK]\n")
+                file.write(f"NAME: {task.name}\n")
+                file.write(f"START: {task.start_date}\n")
+                file.write(f"END: {task.end_date}\n")
+                file.write(f"DURATION: {task.duration}\n")
+                file.write(f"DEDICATION: {task.dedication}\n")
+                file.write(f"COLOR: {task.color.name()}\n")
+                file.write(f"NOTES: {task.notes}\n")
+                file.write("[/TASK]\n\n")
+        self.current_file_path = file_path
+        self.main_window.unsaved_changes = False
+        print(f"Archivo guardado en: {file_path}")
+    except Exception as e:
+        print(f"Error al guardar el archivo: {e}")
+
+Actualizar el método load_tasks_from_file para leer las notas:
+
+python
+
+def load_tasks_from_file(self, file_path):
+    try:
+        self.task_table.setRowCount(0)
+        with open(file_path, 'r') as file:
+            task_data = {}
+            for line in file:
+                line = line.strip()
+                if line == "[TASK]":
+                    task_data = {}
+                elif line == "[/TASK]":
+                    self.add_task_to_table(task_data, editable=False)
+                elif ":" in line:
+                    key, value = line.split(":", 1)
+                    task_data[key.strip()] = value.strip()
+        self.current_file_path = file_path
+        self.main_window.unsaved_changes = False
+        self.main_window.update_gantt_chart()
+        print(f"Archivo cargado desde: {file_path}")
+    except Exception as e:
+        print(f"Error al cargar el archivo: {e}")
+
+Modificar MainWindow.update_gantt_chart para usar el objeto Task existente:
+
+python
+
+class MainWindow(QMainWindow):
+    # ... (resto del código)
+
+    def update_gantt_chart(self):
+        self.tasks = []
+        for row in range(self.task_table_widget.task_table.rowCount()):
+            name_item = self.task_table_widget.task_table.item(row, 1)
+            task = name_item.data(Qt.UserRole + 1)
+            if task:
+                # Actualizar los atributos del task desde los widgets de la tabla
+                task.name = name_item.text()
+                task.start_date = self.task_table_widget.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy")
+                task.end_date = self.task_table_widget.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
+                task.duration = self.task_table_widget.task_table.cellWidget(row, 4).text()
+                task.dedication = self.task_table_widget.task_table.cellWidget(row, 5).text()
+                task.color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
+                self.tasks.append(task)
+        # ... (resto del método)
+
+Asegurarse de que al duplicar o agregar tareas se incluyan las notas:
+
+python
+
+    def duplicate_task(self):
+        current_row = self.task_table.currentRow()
+        if current_row >= 0:
+            name_item = self.task_table.item(current_row, 1)
+            task = name_item.data(Qt.UserRole + 1)
+            if task:
+                task_data = {
+                    'NAME': task.name + " (copia)",
+                    'START': task.start_date,
+                    'END': task.end_date,
+                    'DURATION': task.duration,
+                    'DEDICATION': task.dedication,
+                    'COLOR': task.color.name(),
+                    'NOTES': task.notes
+                }
+                self.add_task_to_table(task_data, editable=True)
+                self.update_gantt_chart()
+                self.unsaved_changes = True
+
+Con estos cambios, cada vez que hagas clic en una barra de Gantt, se abrirá una ventana que muestra la información de la tarea y un campo de texto donde puedes agregar o editar notas. Estas notas se guardarán en el objeto Task correspondiente y se mantendrán entre sesiones si guardas y cargas el proyecto.
 
 
 
 
-"encabezado" o "header"
+
+
+
+
+
 
 
 ¿Podemos establecer la convención de la aplicación con archivos de texto plano y usar nuestro propio formato inventado *.bpm para guardar y recuperar los datos de las tareas?
@@ -307,7 +516,7 @@ class TaskTableWidget(QWidget):
                 self.main_window.update_gantt_chart()  # Actualizar el gráfico de Gantt
 
         event.acceptProposedAction()
-    
+
     def retrieve_task_data(self, row):
         return {
             'NAME': self.task_table.item(row, 1).text(),
