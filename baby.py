@@ -1,34 +1,48 @@
-
 import sys
 from datetime import timedelta
 from workalendar.america import Colombia
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QLabel, QDateEdit, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QMenu, QScrollBar, QFileDialog, QMessageBox, QColorDialog
+    QHeaderView, QMenu, QScrollBar, QFileDialog, QMessageBox, QColorDialog,
+    QTextEdit
 )
 from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette
 from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal
 
 class FloatingTaskMenu(QWidget):
-    def __init__(self, task_name, start_date, end_date, parent=None):
+    notesChanged = Signal()
+
+    def __init__(self, task, parent=None):
         super().__init__(parent)
+        self.task = task
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        name_label = QLabel(f"{task_name}")
-        start_label = QLabel(f"Inicio: {start_date}")
-        end_label = QLabel(f"Fin: {end_date}")
+        name_label = QLabel(f"{task.name}")
+        start_label = QLabel(f"Inicio: {task.start_date}")
+        end_label = QLabel(f"Fin: {task.end_date}")
 
         for label in (name_label, start_label, end_label):
-            label.setAlignment(Qt.AlignRight)  # Alinea el texto a la derecha
+            label.setAlignment(Qt.AlignRight)
             layout.addWidget(label)
+
+        self.notes_edit = QTextEdit(self)
+        self.notes_edit.setPlainText(self.task.notes)
+        layout.addWidget(self.notes_edit)
 
         self.adjustSize()
         self.update_colors()
+
+        self.notes_edit.textChanged.connect(self.update_task_notes)
+
+    def update_task_notes(self):
+        if self.task.notes != self.notes_edit.toPlainText():
+            self.task.notes = self.notes_edit.toPlainText()
+            self.notesChanged.emit()  # Emite la señal cuando las notas cambian
 
     def update_colors(self):
         palette = self.palette()
@@ -90,13 +104,14 @@ class StateButton(QPushButton):
             self.timer.stop()
 
 class Task:
-    def __init__(self, name, start_date, end_date, duration, dedication, color=None):
+    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes=""):
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
         self.duration = duration
         self.dedication = dedication
-        self.color = color or QColor(0, 128, 0)  # Color verde por defecto
+        self.color = color or QColor(0, 128, 0)
+        self.notes = notes
 
 class GanttHeaderView(QWidget):
     def __init__(self, parent=None):
@@ -233,8 +248,10 @@ class GanttChart(QWidget):
         self.min_date = min_date
         self.max_date = max_date
         self.pixels_per_day = max(0.1, pixels_per_day)  # Evita valores demasiado pequeños
-        width = max(0, int((max_date.daysTo(min_date) + 1) * self.pixels_per_day))
-        self.setMinimumWidth(min(width, 16777215))  # Limita el ancho máximo
+
+        width = self.parent().width() if self.parent() else self.width()
+
+        self.setMinimumWidth(width)
         self.update()
 
     def mousePressEvent(self, event):
@@ -298,11 +315,14 @@ class GanttChart(QWidget):
     def show_floating_menu(self, position, task):
         if self.floating_menu:
             self.floating_menu.close()
-        self.floating_menu = FloatingTaskMenu(
-            task.name, task.start_date, task.end_date, self
-        )
+        self.floating_menu = FloatingTaskMenu(task, self)
+        self.floating_menu.notesChanged.connect(self.on_notes_changed)  # Conecta la señal
         self.floating_menu.move(position)
         self.floating_menu.show()
+
+    def on_notes_changed(self):
+        if hasattr(self, 'main_window'):
+            self.main_window.unsaved_changes = True
 
     def paintEvent(self, event):
         if not self.min_date or not self.max_date or not self.pixels_per_day:
@@ -381,9 +401,13 @@ class GanttWidget(QWidget):
         QTimer.singleShot(10, lambda: self.chart.update())
 
     def update_parameters(self, min_date, max_date, pixels_per_day):
+        days_total = min_date.daysTo(max_date) + 1
+        available_width = self.width()  # Usa el ancho del widget completo
+        pixels_per_day = max(0.1, available_width / days_total)
+
         self.header.update_parameters(min_date, max_date, pixels_per_day)
         self.chart.update_parameters(min_date, max_date, pixels_per_day)
-        self.content_widget.setFixedWidth(self.chart.width())
+        self.content_widget.setFixedWidth(available_width)
 
 class TaskTableWidget(QWidget):
     def __init__(self, parent=None):
@@ -507,6 +531,9 @@ class TaskTableWidget(QWidget):
         else:
             self.save_file_as()
 
+        if hasattr(self, 'main_window'):
+            self.main_window.unsaved_changes = False
+
     def save_file_as(self):
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Guardar como", "", "Archivos BPM (*.bpm);;Todos los archivos (*)"
@@ -528,34 +555,29 @@ class TaskTableWidget(QWidget):
         try:
             with open(file_path, 'w') as file:
                 for row in range(self.task_table.rowCount()):
-                    task_name = self.task_table.item(row, 1).text()
-                    start_date = self.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy")
-                    end_date = self.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
-                    duration = self.task_table.cellWidget(row, 4).text()
-                    dedication = self.task_table.cellWidget(row, 5).text()
-                    # Obtener el color del elemento de nombre
                     name_item = self.task_table.item(row, 1)
-                    color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
-                    color_str = color.name()  # Convertir a string hexadecimal
-
+                    task = name_item.data(Qt.UserRole + 1)
+                    if not task:
+                        continue
                     file.write("[TASK]\n")
-                    file.write(f"NAME: {task_name}\n")
-                    file.write(f"START: {start_date}\n")
-                    file.write(f"END: {end_date}\n")
-                    file.write(f"DURATION: {duration}\n")
-                    file.write(f"DEDICATION: {dedication}\n")
-                    file.write(f"COLOR: {color_str}\n")
+                    file.write(f"NAME: {task.name}\n")
+                    file.write(f"START: {task.start_date}\n")
+                    file.write(f"END: {task.end_date}\n")
+                    file.write(f"DURATION: {task.duration}\n")
+                    file.write(f"DEDICATION: {task.dedication}\n")
+                    file.write(f"COLOR: {task.color.name()}\n")
+                    file.write(f"NOTES: {task.notes}\n")
                     file.write("[/TASK]\n\n")
-
             self.current_file_path = file_path
-            self.main_window.unsaved_changes = False
+            if hasattr(self, 'main_window'):
+                self.main_window.unsaved_changes = False
             print(f"Archivo guardado en: {file_path}")
         except Exception as e:
             print(f"Error al guardar el archivo: {e}")
 
     def load_tasks_from_file(self, file_path):
         try:
-            self.task_table.setRowCount(0)  # Limpia la tabla actual
+            self.task_table.setRowCount(0)
             with open(file_path, 'r') as file:
                 task_data = {}
                 for line in file:
@@ -563,11 +585,10 @@ class TaskTableWidget(QWidget):
                     if line == "[TASK]":
                         task_data = {}
                     elif line == "[/TASK]":
-                        self.add_task_to_table(task_data, editable=False)  # Cargar en modo no editable
+                        self.add_task_to_table(task_data, editable=False)
                     elif ":" in line:
                         key, value = line.split(":", 1)
                         task_data[key.strip()] = value.strip()
-
             self.current_file_path = file_path
             self.main_window.unsaved_changes = False
             self.main_window.update_gantt_chart()
@@ -579,25 +600,29 @@ class TaskTableWidget(QWidget):
         row_position = self.task_table.rowCount()
         self.task_table.insertRow(row_position)
 
-        # Botón de estado
         state_button = StateButton()
         if not editable:
-            state_button.toggle_state()  # Cambia al estado no editable
+            state_button.toggle_state()
         self.task_table.setCellWidget(row_position, 0, state_button)
 
-        # Nombre de la tarea
-        name_item = QTableWidgetItem(task_data['NAME'])
-        # Almacenar el color en los datos del elemento
-        if 'COLOR' in task_data:
-            color = QColor(task_data['COLOR'])
-        else:
-            color = QColor(0, 128, 0)  # Color por defecto
-        name_item.setData(Qt.UserRole, color)
+        task = Task(
+            task_data['NAME'],
+            task_data['START'],
+            task_data['END'],
+            task_data['DURATION'],
+            task_data['DEDICATION'],
+            QColor(task_data.get('COLOR', '#008000')),
+            task_data.get('NOTES', "")
+        )
+
+        name_item = QTableWidgetItem(task.name)
+        name_item.setData(Qt.UserRole, task.color)
+        name_item.setData(Qt.UserRole + 1, task)
         self.task_table.setItem(row_position, 1, name_item)
 
         # Fecha inicial
         start_date = QDateEdit()
-        start_date.setDate(QDate.fromString(task_data['START'], "dd/MM/yyyy"))
+        start_date.setDate(QDate.fromString(task.start_date, "dd/MM/yyyy"))
         start_date.setCalendarPopup(True)
         start_date.setDisplayFormat("dd/MM/yyyy")
         start_date.setReadOnly(not editable)
@@ -605,19 +630,19 @@ class TaskTableWidget(QWidget):
 
         # Fecha final
         end_date = QDateEdit()
-        end_date.setDate(QDate.fromString(task_data['END'], "dd/MM/yyyy"))
+        end_date.setDate(QDate.fromString(task.end_date, "dd/MM/yyyy"))
         end_date.setCalendarPopup(True)
         end_date.setDisplayFormat("dd/MM/yyyy")
         end_date.setReadOnly(not editable)
         self.task_table.setCellWidget(row_position, 3, end_date)
 
         # Duración
-        duration = QLineEdit(task_data['DURATION'])
+        duration = QLineEdit(task.duration)
         duration.setReadOnly(not editable)
         self.task_table.setCellWidget(row_position, 4, duration)
 
         # Dedicación
-        dedication = QLineEdit(task_data['DEDICATION'])
+        dedication = QLineEdit(task.dedication)
         dedication.setReadOnly(not editable)
         self.task_table.setCellWidget(row_position, 5, dedication)
 
@@ -669,11 +694,11 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.unsaved_changes = False
         self.setWindowTitle("Control de Tareas con Diagrama de Gantt")
         self.setGeometry(100, 100, 1200, 800)
 
         self.tasks = []
-        self.unsaved_changes = False
         self.current_file_path = None
         self.selected_period = 365  # Por defecto, 1 año (en días)
 
@@ -704,6 +729,7 @@ class MainWindow(QMainWindow):
         self.gantt_widget = GanttWidget(self.tasks, self.ROW_HEIGHT)
         self.gantt_header = self.gantt_widget.header
         self.gantt_chart = self.gantt_widget.chart
+        self.gantt_chart.main_window = self
         self.scroll_area = self.gantt_widget.scroll_area
 
         # Conectar la señal colorChanged
@@ -718,6 +744,10 @@ class MainWindow(QMainWindow):
         self.scroll_area.verticalScrollBar().valueChanged.connect(self.sync_scroll)
 
         self.adjust_all_row_heights()
+
+        # Agregar esta línea al final del método __init__
+        self.add_default_task()
+
         self.update_gantt_chart()
 
     def sync_scroll(self):
@@ -812,17 +842,21 @@ class MainWindow(QMainWindow):
     def duplicate_task(self):
         current_row = self.task_table.currentRow()
         if current_row >= 0:
-            task_data = {
-                'NAME': self.task_table.item(current_row, 1).text() + " (copia)",
-                'START': self.task_table.cellWidget(current_row, 2).date().toString("dd/MM/yyyy"),
-                'END': self.task_table.cellWidget(current_row, 3).date().toString("dd/MM/yyyy"),
-                'DURATION': self.task_table.cellWidget(current_row, 4).text(),
-                'DEDICATION': self.task_table.cellWidget(current_row, 5).text(),
-                'COLOR': self.task_table.item(current_row, 1).data(Qt.UserRole).name()
-            }
-            self.task_table_widget.add_task_to_table(task_data, editable=True)
-            self.update_gantt_chart()
-            self.unsaved_changes = True
+            name_item = self.task_table.item(current_row, 1)
+            task = name_item.data(Qt.UserRole + 1)
+            if task:
+                task_data = {
+                    'NAME': task.name + " (copia)",
+                    'START': task.start_date,
+                    'END': task.end_date,
+                    'DURATION': task.duration,
+                    'DEDICATION': task.dedication,
+                    'COLOR': task.color.name(),
+                    'NOTES': task.notes
+                }
+                self.task_table_widget.add_task_to_table(task_data, editable=True)
+                self.update_gantt_chart()
+                self.unsaved_changes = True
 
     def insert_task(self):
         current_row = self.task_table.currentRow()
@@ -876,14 +910,15 @@ class MainWindow(QMainWindow):
         self.tasks = []
         for row in range(self.task_table_widget.task_table.rowCount()):
             name_item = self.task_table_widget.task_table.item(row, 1)
-            name = name_item.text()
-            color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
-            start_date = self.task_table_widget.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy")
-            end_date = self.task_table_widget.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
-            duration = self.task_table_widget.task_table.cellWidget(row, 4).text()
-            dedication = self.task_table_widget.task_table.cellWidget(row, 5).text()
-            task = Task(name, start_date, end_date, duration, dedication, color)
-            self.tasks.append(task)
+            task = name_item.data(Qt.UserRole + 1)
+            if task:
+                task.name = name_item.text()
+                task.start_date = self.task_table_widget.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy")
+                task.end_date = self.task_table_widget.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy")
+                task.duration = self.task_table_widget.task_table.cellWidget(row, 4).text()
+                task.dedication = self.task_table_widget.task_table.cellWidget(row, 5).text()
+                task.color = name_item.data(Qt.UserRole) or QColor(0, 128, 0)
+                self.tasks.append(task)
 
         if self.tasks:
             min_date = min(QDate.fromString(task.start_date, "dd/MM/yyyy") for task in self.tasks)
@@ -895,7 +930,7 @@ class MainWindow(QMainWindow):
             max_date = current_date.addDays(30)  # Mostrar un mes por defecto
 
         days_total = min_date.daysTo(max_date) + 1
-        available_width = max(1, self.scroll_area.viewport().width())
+        available_width = self.gantt_widget.width()
         pixels_per_day = max(0.1, available_width / days_total)
 
         self.gantt_widget.update_parameters(min_date, max_date, pixels_per_day)
@@ -925,7 +960,8 @@ class MainWindow(QMainWindow):
             reply = QMessageBox.question(
                 self, 'Cambios sin guardar',
                 'Hay cambios sin guardar. ¿Desea guardar antes de salir?',
-                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel, QMessageBox.Save
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save
             )
             if reply == QMessageBox.Save:
                 self.task_table_widget.save_file()
@@ -936,6 +972,26 @@ class MainWindow(QMainWindow):
                 event.ignore()
         else:
             event.accept()
+
+    def add_default_task(self):
+        today = QDate.currentDate()
+        end_date = today.addDays(7)  # La tarea dura una semana por defecto
+        task_data = {
+            'NAME': "Tarea por defecto",
+            'START': today.toString("dd/MM/yyyy"),
+            'END': end_date.toString("dd/MM/yyyy"),
+            'DURATION': "5",  # 5 días hábiles en una semana
+            'DEDICATION': "100",
+            'COLOR': QColor(0, 128, 0).name(),
+            'NOTES': "Esta es una tarea de ejemplo."
+        }
+        self.task_table_widget.add_task_to_table(task_data, editable=True)
+        self.adjust_row_heights()
+        self.unsaved_changes = True
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_gantt_chart()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
