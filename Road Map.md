@@ -1,7 +1,5 @@
-a## Road Map
+## Road Map
 
-1. Las notas gaurdadas solo cargan la primera fila de texto
-10. Reineciar color por defecto Gantt
 13. Mostrar dias restantes en ventana de informacion de barras Gantt
 1. Cundo se abre otro proyecto no se pregunta si se desean guardas los cambios
 15. Cuando se inecia le listado de tareas nuevo desde el menu este no coloca la primera tarea por defecto
