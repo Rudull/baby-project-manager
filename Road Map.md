@@ -1,5 +1,6 @@
 ## Road Map
 
+1. El bndon de menu de las filas funciona por fuera de las filas
 13. Mostrar dias restantes en ventana de informacion de barras Gantt
 1. Cundo se abre otro proyecto no se pregunta si se desean guardas los cambios
 15. Cuando se inecia le listado de tareas nuevo desde el menu este no coloca la primera tarea por defecto
@@ -104,3 +105,165 @@ Explicación de los cambios:
 mousePressEvent: Captura cuál fila se ha comenzado a arrastrar.
 mouseMoveEvent: Si se mantiene presionado el botón del ratón, se inicia el proceso de arrastre.
 dropEvent: Maneja la lógica para mover la tarea del índice de la fila arrastrada al índice de la fila donde se suelta.
+
+
+
+
+
+
+
+
+Cuando el usuario haga clic derecho sobre una tarea padre (haciendo clic derecho sobre la columna 0 en la celda donde está el botón de cada fila
+), debe alternar entre colapsar las tareas hijo y expandir las tareas hijo.
+Dame las instrucciones detalladas con el código que se debe modificar y el que se debe agregar y donde se debe agregar.
+
+
+Para implementar la funcionalidad de colapsar y expandir subtareas al hacer clic derecho en una tarea padre, necesitaremos hacer varios cambios en el código existente. Aquí están las instrucciones detalladas:
+
+1. Modificar la clase `Task`:
+
+Añade un nuevo atributo `collapsed` a la clase `Task`:
+
+```python
+class Task:
+    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes=""):
+        # ... (código existente) ...
+        self.collapsed = False  # Nuevo atributo
+```
+
+2. Modificar la clase `StateButton`:
+
+Añade un nuevo método para manejar el clic derecho:
+
+```python
+class StateButton(QPushButton):
+    def __init__(self, parent=None):
+        # ... (código existente) ...
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+    def show_context_menu(self, position):
+        task = self.parent().item(self.parent().row(self), 1).data(Qt.UserRole + 1)
+        if task.subtasks:
+            menu = QMenu(self)
+            action = menu.addAction("Colapsar" if not task.collapsed else "Expandir")
+            action.triggered.connect(self.toggle_collapse)
+            menu.exec_(self.mapToGlobal(position))
+
+    def toggle_collapse(self):
+        task = self.parent().item(self.parent().row(self), 1).data(Qt.UserRole + 1)
+        task.collapsed = not task.collapsed
+        self.parent().parent().parent().update_task_visibility()
+```
+
+3. Modificar la clase `TaskTableWidget`:
+
+Añade un nuevo método para actualizar la visibilidad de las tareas:
+
+```python
+class TaskTableWidget(QWidget):
+    def __init__(self, parent=None):
+        # ... (código existente) ...
+
+    def update_task_visibility(self):
+        for row in range(self.task_table.rowCount()):
+            item = self.task_table.item(row, 1)
+            if item:
+                task = item.data(Qt.UserRole + 1)
+                visible = True
+                parent = task.parent
+                while parent:
+                    if parent.collapsed:
+                        visible = False
+                        break
+                    parent = parent.parent
+                self.task_table.setRowHidden(row, not visible)
+        self.main_window.update_gantt_chart()
+```
+
+4. Modificar el método `add_task_to_table` en `TaskTableWidget`:
+
+Modifica la creación del `StateButton`:
+
+```python
+def add_task_to_table(self, task_data, editable=False, row=None):
+    # ... (código existente) ...
+    state_button = StateButton()
+    state_button.setParent(self.task_table)  # Establece el padre del botón
+    # ... (resto del código existente) ...
+```
+
+5. Modificar la clase `MainWindow`:
+
+Añade un nuevo método para actualizar la visibilidad de las tareas en el gráfico de Gantt:
+
+```python
+class MainWindow(QMainWindow):
+    def __init__(self):
+        # ... (código existente) ...
+
+    def update_gantt_chart(self):
+        self.tasks = []
+        for row in range(self.task_table_widget.task_table.rowCount()):
+            if not self.task_table_widget.task_table.isRowHidden(row):
+                name_item = self.task_table_widget.task_table.item(row, 1)
+                task = name_item.data(Qt.UserRole + 1)
+                if task:
+                    # ... (resto del código existente para actualizar las tareas) ...
+                    self.tasks.append(task)
+
+        # ... (resto del código existente para actualizar el gráfico de Gantt) ...
+```
+
+6. Conectar la señal de actualización:
+
+En el constructor de `MainWindow`, añade:
+
+```python
+self.task_table_widget.task_table.itemChanged.connect(self.update_gantt_chart)
+```
+
+Estos cambios permitirán colapsar y expandir subtareas al hacer clic derecho en el botón de estado de una tarea padre. Cuando se colapsa una tarea, todas sus subtareas se ocultarán tanto en la tabla como en el gráfico de Gantt. Al expandirla, las subtareas volverán a ser visibles.
+
+Recuerda manejar correctamente los casos en que las tareas padre estén colapsadas al cargar o guardar proyectos, para mantener el estado de colapso/expansión entre sesiones si es necesario.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+python3 baby.py
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1030, in show_context_menu
+    self.add_subtask()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1099, in add_subtask
+    state_button.set_is_subtask(True)
+AttributeError: 'StateButton' object has no attribute 'set_is_subtask'. Did you mean: 'set_has_subtasks'?
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1030, in show_context_menu
+    self.add_subtask()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1099, in add_subtask
+    state_button.set_is_subtask(True)
+AttributeError: 'StateButton' object has no attribute 'set_is_subtask'. Did you mean: 'set_has_subtasks'?
+Archivo cargado desde: /mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/proyectos_prueba.bpm
+Acción seleccionada: Abrir
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1030, in show_context_menu
+    self.add_subtask()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1099, in add_subtask
+    state_button.set_is_subtask(True)
+AttributeError: 'StateButton' object has no attribute 'set_is_subtask'. Did you mean: 'set_has_subtasks'?
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1030, in show_context_menu
+    self.add_subtask()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby.py", line 1099, in add_subtask
+    state_button.set_is_subtask(True)
+AttributeError: 'StateButton' object has no attribute 'set_is_subtask'. Did you mean: 'set_has_subtasks'?
