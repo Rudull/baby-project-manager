@@ -1,18 +1,14 @@
 ## Road Map
 
-1. El bndon de menu de las filas funciona por fuera de las filas
-13. Mostrar dias restantes en ventana de informacion de barras Gantt
-1. Cundo se abre otro proyecto no se pregunta si se desean guardas los cambios
 15. Cuando se inecia le listado de tareas nuevo desde el menu este no coloca la primera tarea por defecto
 2. La ventana emengente de las barras de Gantt salen por fuera de la pantalla
-3. colocar menu de tareas a barras de Gantt
 4. Mostrar 1 semana, 1 mes o 1 año en el diagrama de Gantt
 5. Dibujar linea de separacion de acuerdo al periodo selecciodo
 6. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
 7. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
 8. Sombrear tarea seleccionada
+9. Implementar subtareas
 9. Extender lineas vertivales da año al Gantt
-11. Implementar Ctr+S
 12. Reescalar encabezado Gantt
 14. Implementar arrastrar y soltar
 15. Implementar que el panel de la lista de tareas re pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
