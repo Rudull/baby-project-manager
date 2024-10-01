@@ -1,5 +1,16 @@
 ## Road Map
 
+<<<<<<< Updated upstream
+=======
+1. Cunado se mueve arriba una tarea y se coloca en edicion la fila que se coloca en edicion es la que queda en la poasicion que ocupaba la fila que se movio arriba. lo miqmo aucede cuando se mueva a abajo
+2. Cuando se agregan subtareas y es mas de una tarea, si se colocan en edicion solo la primera subtarea pasa a modo edicion, aueque sea cuaequiera de las otras teas la que se quiera clolar en edicion. las demas subtareas por debajo de la primera agregada al grupo de subtareas del mismo pader no entran en edicion, entra la primera por las demas
+3. Las subtareas no se estan gardando
+4. Las tareas deben gardarse con las notas en blenco
+5. Las subtareas que tengan subtareas no deben clocar el guien en le boton de estado de la fila
+1. El bndon de menu de las filas funciona por fuera de las filas
+13. Mostrar dias restantes en ventana de informacion de barras Gantt
+1. Cundo se abre otro proyecto no se pregunta si se desean guardas los cambios
+>>>>>>> Stashed changes
 15. Cuando se inecia le listado de tareas nuevo desde el menu este no coloca la primera tarea por defecto
 2. La ventana emengente de las barras de Gantt salen por fuera de la pantalla
 4. Mostrar 1 semana, 1 mes o 1 año en el diagrama de Gantt
@@ -13,9 +24,9 @@
 14. Implementar arrastrar y soltar
 15. Implementar que el panel de la lista de tareas re pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
-15. https://paletadecolores.online/oscuros/
-16. https://colorhunt.co/
-17. https://colorhunt.co/palette/f3efe043424222222222a39f
+0. https://paletadecolores.online/oscuros/
+0. https://colorhunt.co/
+0. https://colorhunt.co/palette/f3efe043424222222222a39f
 
 self.setStyleSheet("background-color: rgb(
 
