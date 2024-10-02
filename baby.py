@@ -1,4 +1,4 @@
-# Orden fecha inicial ok 14
+# todas las vistas ok Rueda del raton 7
 import sys
 from datetime import timedelta, datetime
 from workalendar.america import Colombia
@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QHeaderView, QMenu, QScrollBar, QFileDialog, QMessageBox, QColorDialog,
     QTextEdit
 )
-from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette, QContextMenuEvent, QKeySequence, QShortcut
+from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette, QContextMenuEvent, QKeySequence, QShortcut, QWheelEvent
 from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal, QPoint
 
 class FloatingTaskMenu(QWidget):
@@ -38,6 +38,10 @@ class FloatingTaskMenu(QWidget):
         self.notes_edit.setPlainText(self.task.notes)
         self.notes_edit.setMinimumHeight(100)
         layout.addWidget(self.notes_edit)
+
+        self.setMinimumWidth(250)  # Ajusta este valor según tus necesidades
+        self.setMaximumWidth(400)  # Ajusta este valor según tus necesidades
+        self.setMaximumHeight(300)  # Ajusta este valor según tus necesidades
 
         self.adjustSize()
         self.update_colors()
@@ -91,6 +95,9 @@ class FloatingTaskMenu(QWidget):
                 child.setStyleSheet(f"color: {self.text_color.name()};")
             self.update()
         super().changeEvent(event)
+
+    def sizeHint(self):
+        return self.layout().sizeHint()
 
 class StateButton(QPushButton):
     def __init__(self, parent=None):
@@ -169,8 +176,7 @@ class GanttHeaderView(QWidget):
     def update_parameters(self, min_date, max_date, pixels_per_day):
         self.min_date = min_date
         self.max_date = max_date
-        self.pixels_per_day = max(0.1, pixels_per_day)  # Evita valores demasiado pequeños
-        width = max(0, int((max_date.daysTo(min_date) + 1) * self.pixels_per_day))
+        self.pixels_per_day = pixels_per_day
         self.update()
 
     def paintEvent(self, event):
@@ -273,10 +279,7 @@ class GanttChart(QWidget):
     def update_parameters(self, min_date, max_date, pixels_per_day):
         self.min_date = min_date
         self.max_date = max_date
-        self.pixels_per_day = max(0.1, pixels_per_day)  # Evita valores demasiado pequeños
-
-        width = self.parent().width() if self.parent() else self.width()
-
+        self.pixels_per_day = pixels_per_day
         self.update()
 
     def mousePressEvent(self, event):
@@ -288,7 +291,7 @@ class GanttChart(QWidget):
         if event.button() == Qt.LeftButton:
             # Almacenar las posiciones
             self.click_pos = event.position().toPoint()
-            self.click_global_pos = event.globalPosition().toPoint()
+            self.click_global_pos = self.mapToGlobal(self.click_pos)
             # Iniciar el temporizador para el clic simple
             self.single_click_timer = QTimer()
             self.single_click_timer.setSingleShot(True)
@@ -301,7 +304,7 @@ class GanttChart(QWidget):
             task_index = int(self.click_pos.y() / self.row_height)
             if 0 <= task_index < len(self.tasks):
                 task = self.tasks[task_index]
-                self.show_floating_menu(self.click_global_pos, task)
+                self.show_floating_menu(self.click_pos, task)
         # Restablecer la bandera
         self.double_click_occurred = False
 
@@ -344,8 +347,35 @@ class GanttChart(QWidget):
         updated_task = self.get_updated_task(task)
         self.floating_menu = FloatingTaskMenu(updated_task, self)
         self.floating_menu.notesChanged.connect(self.on_notes_changed)
-        self.floating_menu.move(position)
+
+        # Calcular la posición ajustada
+        menu_size = self.floating_menu.sizeHint()
+        adjusted_position = self.adjust_menu_position(position, menu_size)
+
+        self.floating_menu.move(adjusted_position)
         self.floating_menu.show()
+
+    def adjust_menu_position(self, position, menu_size):
+        screen = QApplication.primaryScreen().geometry()
+        global_pos = self.mapToGlobal(position)
+
+        # Calcular las coordenadas preferidas (cerca del puntero del mouse)
+        preferred_x = global_pos.x()
+        preferred_y = global_pos.y()
+
+        # Ajustar horizontalmente
+        if preferred_x + menu_size.width() > screen.right():
+            preferred_x = screen.right() - menu_size.width()
+        if preferred_x < screen.left():
+            preferred_x = screen.left()
+
+        # Ajustar verticalmente
+        if preferred_y + menu_size.height() > screen.bottom():
+            preferred_y = preferred_y - menu_size.height()  # Mostrar encima del cursor
+        if preferred_y < screen.top():
+            preferred_y = screen.top()
+
+        return QPoint(preferred_x, preferred_y)
 
     def get_updated_task(self, task):
         for row in range(self.main_window.task_table_widget.task_table.rowCount()):
@@ -372,27 +402,19 @@ class GanttChart(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.fillRect(event.rect(), self.background_color)
 
-        # Ajustar el tamaño del widget al número de tareas
-        self.setMinimumHeight(len(self.tasks) * self.row_height)
-
         for i, task in enumerate(self.tasks):
             start = QDate.fromString(task.start_date, "dd/MM/yyyy")
             end = QDate.fromString(task.end_date, "dd/MM/yyyy")
             if end < self.min_date or start > self.max_date:
                 continue
 
-            start = max(start, self.min_date)
-            end = min(end, self.max_date)
-
             x = self.min_date.daysTo(start) * self.pixels_per_day
-            width = start.daysTo(end) * self.pixels_per_day
+            width = start.daysTo(end) * self.pixels_per_day + self.pixels_per_day  # Add one day to include end date
             y = i * self.row_height
 
-            y_adjusted = y + 1
-
-            painter.setBrush(QBrush(task.color))  # Usar el color de la tarea
+            painter.setBrush(QBrush(task.color))
             painter.setPen(Qt.NoPen)
-            painter.drawRect(QRectF(x, y_adjusted, width, self.row_height - 2))
+            painter.drawRect(QRectF(x, y + 1, width, self.row_height - 2))
 
         # Dibujar la línea vertical para el día de hoy
         today = QDate.currentDate()
@@ -400,6 +422,13 @@ class GanttChart(QWidget):
             today_x = self.min_date.daysTo(today) * self.pixels_per_day
             painter.setPen(QPen(self.today_line_color, 2))
             painter.drawLine(int(today_x), 0, int(today_x), self.height())
+
+        if not self.tasks:
+            # Mostrar un mensaje de bienvenida en el centro del gráfico Gantt
+            welcome_text = "Bienvenido a Baby Project Manager\nHaga clic en 'Agregar Nueva Tarea' para comenzar"
+            painter.setPen(QPen(self.text_color))
+            painter.setFont(QFont("Arial", 14))
+            painter.drawText(self.rect(), Qt.AlignCenter, welcome_text)
 
         painter.end()
 
@@ -431,6 +460,33 @@ class GanttChart(QWidget):
     def scrollTo(self, value):
         self.update()
 
+    def calculate_today_position(self):
+        if self.min_date and self.max_date:
+            today = QDate.currentDate()
+            if self.min_date <= today <= self.max_date:
+                total_days = self.min_date.daysTo(self.max_date)
+                days_to_today = self.min_date.daysTo(today)
+                return days_to_today / total_days
+        return None
+
+def adjust_menu_position(self, position, menu_size):
+    screen = QApplication.primaryScreen().geometry()
+    global_pos = self.mapToGlobal(position)
+
+    # Ajustar horizontalmente
+    if global_pos.x() + menu_size.width() > screen.right():
+        global_pos.setX(screen.right() - menu_size.width())
+    if global_pos.x() < screen.left():
+        global_pos.setX(screen.left())
+
+    # Ajustar verticalmente
+    if global_pos.y() + menu_size.height() > screen.bottom():
+        global_pos.setY(screen.bottom() - menu_size.height())
+    if global_pos.y() < screen.top():
+        global_pos.setY(screen.top())
+
+    return global_pos
+
 class GanttWidget(QWidget):
     def __init__(self, tasks, row_height):
         super().__init__()
@@ -450,14 +506,16 @@ class GanttWidget(QWidget):
 
         self.layout.addWidget(self.content_widget)
 
+        self.pixels_per_day = 0
+
     def update_parameters(self, min_date, max_date, pixels_per_day):
         available_width = self.width()
         days_total = min_date.daysTo(max_date) + 1
-        pixels_per_day = max(0.1, available_width / days_total)
+        self.pixels_per_day = max(0.1, available_width / days_total)  # Modifica esta línea
 
-        self.header.update_parameters(min_date, max_date, pixels_per_day)
-        self.chart.update_parameters(min_date, max_date, pixels_per_day)
-        self.content_widget.setFixedWidth(available_width)
+        self.header.update_parameters(min_date, max_date, self.pixels_per_day)
+        self.chart.update_parameters(min_date, max_date, self.pixels_per_day)
+        self.content_widget.setFixedWidth(int(days_total * self.pixels_per_day))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -571,6 +629,21 @@ class TaskTableWidget(QWidget):
         open_action = menu.addAction("Abrir")
         open_action.triggered.connect(self.open_file)
 
+        view_menu = menu.addMenu("Vista")
+        # Submenús de Vista
+        complete_action = view_menu.addAction("Completa")
+        year_action = view_menu.addAction("Año")
+        six_month_action = view_menu.addAction("6 Meses")
+        three_month_action = view_menu.addAction("3 Meses")
+        one_month_action = view_menu.addAction("1 Mes")
+
+        # Conectar las acciones de vista
+        complete_action.triggered.connect(self.main_window.set_complete_view)
+        year_action.triggered.connect(self.main_window.set_year_view)
+        six_month_action.triggered.connect(self.main_window.set_six_month_view)
+        three_month_action.triggered.connect(self.main_window.set_three_month_view)
+        one_month_action.triggered.connect(self.main_window.set_one_month_view)
+
         reset_all_colors_action = menu.addAction("Restablecer colores")
         reset_all_colors_action.triggered.connect(self.reset_all_colors)
 
@@ -584,10 +657,6 @@ class TaskTableWidget(QWidget):
         export_menu.addAction("XLSX")
 
         config_menu = menu.addMenu("Configuración")
-        view_menu = config_menu.addMenu("Vista")
-        view_menu.addAction("Semana")
-        view_menu.addAction("Mes")
-        view_menu.addAction("Año")
         appearance_menu = config_menu.addMenu("Apariencia")
         appearance_menu.addAction("Modo claro")
         appearance_menu.addAction("Modo oscuro")
@@ -765,7 +834,7 @@ class TaskTableWidget(QWidget):
         state_button.clicked.connect(self.toggle_row_state)
 
         if hasattr(self, 'main_window'):
-            self.main_window.set_unsaved_changes(True)
+            self.main_window.update_gantt_chart()
 
     def toggle_row_state(self):
         state_button = self.sender()
@@ -980,16 +1049,16 @@ class MainWindow(QMainWindow):
         self.unsaved_changes = False
         self.base_title = "Baby project manager"
         self.setWindowTitle(self.base_title)
-
-        # Agregar estas líneas
         self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.setMinimumSize(800, 600)  # Establece un tamaño mínimo para la ventana
-
         self.setGeometry(100, 100, 1200, 800)
-
         self.tasks = []
         self.current_file_path = None
         self.selected_period = 365  # Por defecto, 1 año (en días)
+        self.setMouseTracking(True)
+        self.wheel_accumulator = 0
+        self.wheel_threshold = 100  # Ajusta este valor
+        self.current_view = "complete"  # Añadir esta línea
 
         main_widget = QWidget()
         main_layout = QHBoxLayout()
@@ -1033,8 +1102,6 @@ class MainWindow(QMainWindow):
 
         self.adjust_all_row_heights()
 
-        self.add_default_task()
-
         self.update_gantt_chart()
 
         from PySide6.QtGui import QKeySequence, QShortcut
@@ -1042,6 +1109,8 @@ class MainWindow(QMainWindow):
         # Atajo de teclado para guardar
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.quick_save)
+
+        self.set_unsaved_changes(False)
 
     def update_title(self):
         if self.unsaved_changes:
@@ -1072,7 +1141,8 @@ class MainWindow(QMainWindow):
         self.task_table_widget.add_task_to_table(task_data, editable=True)
         self.adjust_row_heights()
         self.update_gantt_chart()
-        self.set_unsaved_changes(True)
+        if self.task_table_widget.task_table.rowCount() > 0:
+            self.set_unsaved_changes(True)
 
     def adjust_all_row_heights(self):
         for row in range(self.task_table.rowCount()):
@@ -1230,15 +1300,14 @@ class MainWindow(QMainWindow):
                 self.update_gantt_chart()
                 self.set_unsaved_changes(True)
 
-    def update_gantt_chart(self):
-        self.print_task_table_contents()
+    def update_gantt_chart(self, set_unsaved=True):
         self.tasks = []
         for row in range(self.task_table_widget.task_table.rowCount()):
             name_item = self.task_table_widget.task_table.item(row, 1)
             if name_item is not None:
                 task = name_item.data(Qt.UserRole + 1)
                 if task:
-                    task.name = name_item.text()  # Actualizar el nombre
+                    task.name = name_item.text()
                     start_date_widget = self.task_table_widget.task_table.cellWidget(row, 2)
                     end_date_widget = self.task_table_widget.task_table.cellWidget(row, 3)
                     duration_widget = self.task_table_widget.task_table.cellWidget(row, 4)
@@ -1255,19 +1324,35 @@ class MainWindow(QMainWindow):
 
                     task.color = name_item.data(Qt.UserRole) or QColor(34, 163, 159)
                     self.tasks.append(task)
-                else:
-                    print(f"Warning: No task data found for row {row}")
-            else:
-                print(f"Warning: No name item found for row {row}")
 
         if self.tasks:
             min_date = min(QDate.fromString(task.start_date, "dd/MM/yyyy") for task in self.tasks)
             max_date = max(QDate.fromString(task.end_date, "dd/MM/yyyy") for task in self.tasks)
         else:
-            # Si no hay tareas, usar la fecha actual
             current_date = QDate.currentDate()
             min_date = current_date
-            max_date = current_date.addDays(30)  # Mostrar un mes por defecto
+            max_date = current_date.addDays(30)  # Mostrar un mes por defecto si no hay tareas
+
+        today = QDate.currentDate()
+
+        if self.current_view == "year":
+            min_date = today.addDays(-int(today.daysTo(today.addYears(1)) * 0.125))
+            max_date = min_date.addYears(1)
+        elif self.current_view == "one_month":
+            min_date = today.addDays(-7)  # Una semana antes de hoy
+            max_date = min_date.addMonths(1)
+        elif self.current_view == "three_month":
+            min_date = today.addDays(-int(today.daysTo(today.addMonths(3)) * 0.125))
+            max_date = min_date.addMonths(3)
+        elif self.current_view == "six_month":
+            min_date = today.addDays(-int(today.daysTo(today.addMonths(6)) * 0.125))
+            max_date = min_date.addMonths(6)
+        elif self.current_view == "complete":
+            pass  # 'pass' para evitar un bloque vacío
+
+        # Asegúrate de que haya al menos un día de diferencia
+        if min_date == max_date:
+            max_date = min_date.addDays(1)
 
         days_total = min_date.daysTo(max_date) + 1
         available_width = self.gantt_widget.width()
@@ -1275,14 +1360,15 @@ class MainWindow(QMainWindow):
 
         self.gantt_widget.update_parameters(min_date, max_date, pixels_per_day)
         self.gantt_chart.tasks = self.tasks
-        self.gantt_chart.setMinimumHeight(len(self.tasks) * self.ROW_HEIGHT)
+        self.gantt_chart.setMinimumHeight(max(len(self.tasks) * self.ROW_HEIGHT, self.gantt_widget.height()))
         self.gantt_chart.update()
         self.gantt_header.update()
 
         # Forzar la actualización del diseño
         self.gantt_widget.updateGeometry()
 
-        self.set_unsaved_changes(True)
+        if set_unsaved and self.tasks:
+            self.set_unsaved_changes(True)
 
     def update_task_color(self, task_index, color):
         name_item = self.task_table_widget.task_table.item(task_index, 1)
@@ -1328,25 +1414,9 @@ class MainWindow(QMainWindow):
         else:
             event.accept()
 
-    def add_default_task(self):
-        today = QDate.currentDate()
-        end_date = today.addDays(7)  # La tarea dura una semana por defecto
-        task_data = {
-            'NAME': "Tarea por defecto",
-            'START': today.toString("dd/MM/yyyy"),
-            'END': end_date.toString("dd/MM/yyyy"),
-            'DURATION': "5",  # 5 días hábiles en una semana
-            'DEDICATION': "40",
-            'COLOR': QColor(34,163,159).name(),
-            'NOTES': "Esta es una tarea de ejemplo."
-        }
-        self.task_table_widget.add_task_to_table(task_data, editable=True)
-        self.adjust_row_heights()
-        self.set_unsaved_changes(True)
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.update_gantt_chart()
+        self.update_gantt_chart(set_unsaved=False)
         self.task_table_widget.adjust_button_size()
 
     def check_unsaved_changes(self):
@@ -1377,6 +1447,66 @@ class MainWindow(QMainWindow):
                 print(f"Row {row}: Name={name_item.text()}, Task={task}")
             else:
                 print(f"Row {row}: No name item")
+
+    def set_year_view(self):
+        self.current_view = "year"
+        self.update_gantt_chart(set_unsaved=False)
+
+    def set_complete_view(self):
+        self.current_view = "complete"
+        self.update_gantt_chart(set_unsaved=False)
+
+    def set_one_month_view(self):
+        self.current_view = "one_month"
+        self.update_gantt_chart(set_unsaved=False)
+
+    def set_three_month_view(self):
+        self.current_view = "three_month"
+        self.update_gantt_chart(set_unsaved=False)
+
+    def set_six_month_view(self):
+        self.current_view = "six_month"
+        self.update_gantt_chart(set_unsaved=False)
+
+    def wheelEvent(self, event: QWheelEvent):
+        if event.modifiers() & Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            self.wheel_accumulator += delta
+
+            if self.wheel_accumulator >= self.wheel_threshold:
+                self.zoom_in_view()
+                self.wheel_accumulator = 0  # Reiniciar después de zoom in
+            elif self.wheel_accumulator <= -self.wheel_threshold:
+                self.zoom_out_view()
+                self.wheel_accumulator = 0  # Reiniciar después de zoom out
+
+            event.accept()
+        else:
+            super().wheelEvent(event)
+
+    def zoom_in_view(self):
+        if self.current_view == "complete":
+            self.set_year_view()
+        elif self.current_view == "year":
+            self.set_six_month_view()
+        elif self.current_view == "six_month":
+            self.set_three_month_view()
+        elif self.current_view == "three_month":
+            self.set_one_month_view()
+        else:  # Si ya está en "one_month"
+            self.wheel_accumulator = 0  # Reiniciar el acumulador
+
+    def zoom_out_view(self):
+        if self.current_view == "one_month":
+            self.set_three_month_view()
+        elif self.current_view == "three_month":
+            self.set_six_month_view()
+        elif self.current_view == "six_month":
+            self.set_year_view()
+        elif self.current_view == "year":
+            self.set_complete_view()
+        else:  # Si ya está en "complete"
+            self.wheel_accumulator = 0  # Reiniciar el acumulador
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
