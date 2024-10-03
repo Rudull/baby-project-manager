@@ -4,13 +4,14 @@
 
 1. Implementar subtareas
 2. Implementar importasion de archivos *.ppm
-3. Sombrear tarea seleccionada
-4. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-5. Dibujar linea de separacion de acuerdo al periodo selecciodo
-6. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
-7. Extender lineas vertivales da año al Gantt
-8. Implementar arrastrar y soltar
-9. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+3. Implementar rodar tarea
+4. Sombrear tarea seleccionada
+5. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+6. Dibujar linea de separacion de acuerdo al periodo selecciodo
+7. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
+8. Extender lineas vertivales da año al Gantt
+9. Implementar arrastrar y soltar
+10. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
 10. Revisar def scrollTo(self, value):
 
