@@ -2,16 +2,18 @@
 
 0*. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
 
-1. Implementar subtareas
-2. Implementar importasion de archivos *.ppm
-3. Implementar rodar tarea
-4. Sombrear tarea seleccionada
-5. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-6. Dibujar linea de separacion de acuerdo al periodo selecciodo
-7. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
-8. Extender lineas vertivales da año al Gantt
-9. Implementar arrastrar y soltar
-10. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+1. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando
+2. Implementar division de semanas
+3. Implementar subtareas
+4. Implementar importasion de archivos *.ppm
+5. Implementar rodar tarea
+6. Sombrear tarea seleccionada
+7. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+8. Dibujar linea de separacion de acuerdo al periodo selecciodo
+9. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
+10. Extender lineas vertivales da año al Gantt
+11. Implementar arrastrar y soltar
+12. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
 10. Revisar def scrollTo(self, value):
 
