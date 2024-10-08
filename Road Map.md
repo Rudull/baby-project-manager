@@ -15,8 +15,11 @@
 11. Implementar arrastrar y soltar
 12. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
+13. def sort_tasks_by_start_date(self):
+
 10. Revisar def scrollTo(self, value):
 
+↳
 
 0. https://paletadecolores.online/oscuros/
 0. https://colorhunt.co/

@@ -1,4 +1,4 @@
-# todas las vistas ok Rueda del raton 7
+# Inicia soporte de subtareas 30
 import sys
 from datetime import timedelta, datetime
 from workalendar.america import Colombia
@@ -100,15 +100,18 @@ class FloatingTaskMenu(QWidget):
         return self.layout().sizeHint()
 
 class StateButton(QPushButton):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, is_subtask=False):
         super().__init__(parent)
         self.setFixedSize(25, 25)
         self.setStyleSheet("background-color: red;")
         self.is_editing = True
+        self.is_subtask = is_subtask
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.toggle_color)
         self.timer.start(500)  # Parpadeo cada 500 ms
         self.current_color = "red"
+        self.task = None  # Agregar esta línea
+        self.update_text()
 
     def toggle_color(self):
         if self.is_editing:
@@ -120,6 +123,23 @@ class StateButton(QPushButton):
                 self.current_color = "red"
         else:
             self.setStyleSheet("background-color: rgb(34,151,153);") #color boton de filas
+
+        self.update_text()
+
+    def set_task(self, task):
+        self.task = task
+        self.update_text()
+
+    def update_text(self):
+        if self.task:
+            if self.task.is_subtask:
+                self.setText("↳")
+            elif self.task.has_subtasks():
+                self.setText("—")
+            else:
+                self.setText("")
+        else:
+            self.setText("")
 
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
@@ -135,6 +155,7 @@ class StateButton(QPushButton):
         else:
             self.setStyleSheet("background-color: rgb(34,151,153);") #color boton de filas
             self.timer.stop()
+        self.update_text()  # Añade esta línea
 
 class Task:
     def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes=""):
@@ -145,6 +166,12 @@ class Task:
         self.dedication = dedication
         self.color = color or QColor(34, 163, 159)  # Color por defecto si no se especifica
         self.notes = notes
+        self.subtasks = []  # Lista para almacenar las subtareas
+        self.is_subtask = False
+        self.parent_task = None
+
+    def has_subtasks(self):
+        return len(self.subtasks) > 0
 
 class GanttHeaderView(QWidget):
     def __init__(self, parent=None):
@@ -250,8 +277,9 @@ class GanttChart(QWidget):
     colorChanged = Signal(int, QColor)
     SINGLE_CLICK_INTERVAL = 100  # Intervalo en milisegundos para el clic simple
 
-    def __init__(self, tasks, row_height, header_height):
+    def __init__(self, tasks, row_height, header_height, main_window):
         super().__init__()
+        self.main_window = main_window
         self.tasks = tasks
         self.row_height = row_height
         self.header_height = header_height
@@ -286,6 +314,14 @@ class GanttChart(QWidget):
         if event.button() == Qt.LeftButton:
             self.double_click_occurred = False
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        task_index = self.get_task_at_position(event.pos())
+        if task_index is not None and self.is_click_on_task_bar(event.pos(), task_index):
+            self.setCursor(Qt.PointingHandCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+        super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -409,12 +445,19 @@ class GanttChart(QWidget):
                 continue
 
             x = self.min_date.daysTo(start) * self.pixels_per_day
-            width = start.daysTo(end) * self.pixels_per_day + self.pixels_per_day  # Add one day to include end date
+            width = start.daysTo(end) * self.pixels_per_day + self.pixels_per_day  # Incluye el día final
             y = i * self.row_height
 
             painter.setBrush(QBrush(task.color))
             painter.setPen(Qt.NoPen)
             painter.drawRect(QRectF(x, y + 1, width, self.row_height - 2))
+
+            # Agregar el identificador "↳" para subtareas
+            if hasattr(task, 'is_subtask') and task.is_subtask:
+                painter.setPen(QPen(self.text_color))
+                painter.setFont(QFont("Arial", 12))
+                rect = QRectF(x, y, width, self.row_height)
+                painter.drawText(rect, Qt.AlignVCenter | Qt.AlignLeft, "↳")
 
         # Dibujar la línea vertical para el día de hoy
         today = QDate.currentDate()
@@ -441,20 +484,38 @@ class GanttChart(QWidget):
     def show_context_menu(self, position):
         task_index = self.get_task_at_position(position)
         if task_index is not None:
-            self.main_window.show_task_context_menu(QPoint(self.mapToGlobal(position)), task_index)
+            # Verificar si el clic fue sobre la barra de la tarea
+            if self.is_click_on_task_bar(position, task_index):
+                global_pos = self.mapToGlobal(position)
+                self.main_window.show_task_context_menu(global_pos, task_index)
+
+    def is_click_on_task_bar(self, position, task_index):
+        if 0 <= task_index < len(self.tasks):
+            task = self.tasks[task_index]
+            start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
+            end_date = QDate.fromString(task.end_date, "dd/MM/yyyy")
+
+            x = position.x()
+            y = position.y()
+
+            task_start_x = self.min_date.daysTo(start_date) * self.pixels_per_day
+            task_end_x = self.min_date.daysTo(end_date) * self.pixels_per_day
+            task_y = task_index * self.row_height
+
+            # Añadir un pequeño margen para facilitar el clic
+            margin = 2
+
+            if (task_start_x - margin <= x <= task_end_x + margin and
+                task_y <= y <= task_y + self.row_height):
+                return True
+
+        return False
 
     def get_task_at_position(self, position):
         y = position.y()
         task_index = y // self.row_height
         if 0 <= task_index < len(self.tasks):
-            task = self.tasks[task_index]
-            x = position.x()
-            start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
-            end_date = QDate.fromString(task.end_date, "dd/MM/yyyy")
-            start_x = self.min_date.daysTo(start_date) * self.pixels_per_day
-            end_x = self.min_date.daysTo(end_date) * self.pixels_per_day
-            if start_x <= x <= end_x:
-                return task_index
+            return task_index
         return None
 
     def scrollTo(self, value):
@@ -469,33 +530,38 @@ class GanttChart(QWidget):
                 return days_to_today / total_days
         return None
 
-def adjust_menu_position(self, position, menu_size):
-    screen = QApplication.primaryScreen().geometry()
-    global_pos = self.mapToGlobal(position)
+    def adjust_menu_position(self, position, menu_size):
+        screen = QApplication.primaryScreen().geometry()
+        global_pos = self.mapToGlobal(position)
 
-    # Ajustar horizontalmente
-    if global_pos.x() + menu_size.width() > screen.right():
-        global_pos.setX(screen.right() - menu_size.width())
-    if global_pos.x() < screen.left():
-        global_pos.setX(screen.left())
+        # Ajustar horizontalmente
+        if global_pos.x() + menu_size.width() > screen.right():
+            global_pos.setX(screen.right() - menu_size.width())
+        if global_pos.x() < screen.left():
+            global_pos.setX(screen.left())
 
-    # Ajustar verticalmente
-    if global_pos.y() + menu_size.height() > screen.bottom():
-        global_pos.setY(screen.bottom() - menu_size.height())
-    if global_pos.y() < screen.top():
-        global_pos.setY(screen.top())
+        # Ajustar verticalmente
+        if global_pos.y() + menu_size.height() > screen.bottom():
+            global_pos.setY(screen.bottom() - menu_size.height())
+        if global_pos.y() < screen.top():
+            global_pos.setY(screen.top())
 
-    return global_pos
+        return global_pos
+
+    def contextMenuEvent(self, event):
+        self.show_context_menu(event.pos())
 
 class GanttWidget(QWidget):
-    def __init__(self, tasks, row_height):
+    def __init__(self, tasks, row_height, main_window):
         super().__init__()
+        self.main_window = main_window
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
         self.header = GanttHeaderView()
-        self.chart = GanttChart(tasks, row_height, self.header.header_height)
+        self.chart = GanttChart(tasks, row_height, self.header.header_height, main_window)
+        self.chart.setMouseTracking(True)
 
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
@@ -541,6 +607,9 @@ class TaskTableWidget(QWidget):
 
         self.task_table.horizontalHeader().sectionClicked.connect(self.on_header_click)
         self.task_table.cellChanged.connect(self.on_cell_changed)
+
+        self.task_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.task_table.customContextMenuRequested.connect(self.show_task_context_menu)
 
         self.menu_button = QPushButton("☰", self)
         self.menu_button.clicked.connect(self.show_menu)
@@ -725,6 +794,11 @@ class TaskTableWidget(QWidget):
                         continue
                     file.write("[TASK]\n")
                     file.write(f"NAME: {name_item.text()}\n")
+                    # Agregar el campo PARENT
+                    if hasattr(task, 'is_subtask') and task.is_subtask and hasattr(task, 'parent_task') and task.parent_task:
+                        file.write(f"PARENT: {task.parent_task.name}\n")
+                    else:
+                        file.write("PARENT:\n")
                     file.write(f"START: {task.start_date}\n")
                     file.write(f"END: {task.end_date}\n")
                     file.write(f"DURATION: {task.duration}\n")
@@ -746,6 +820,7 @@ class TaskTableWidget(QWidget):
         try:
             self.task_table.setRowCount(0)
             with open(file_path, 'r') as file:
+                task_data_list = []
                 task_data = {}
                 notes = []
                 for line in file:
@@ -755,31 +830,63 @@ class TaskTableWidget(QWidget):
                         notes = []
                     elif line == "[/TASK]":
                         task_data['NOTES'] = '\n'.join(notes)
-                        self.add_task_to_table(task_data, editable=False)
+                        task_data_list.append(task_data)
                     elif ":" in line:
                         key, value = line.split(":", 1)
                         key = key.strip()
                         value = value.strip()
                         if key == "NOTES":
                             notes.append(value)
+                        elif key == "ID":  # Si estás usando IDs
+                            task_data[key] = value
+                        elif key == "PARENT_ID":  # Si usas IDs para padres
+                            task_data[key] = value
                         else:
                             task_data[key] = value
+
+            # Ahora, procesar task_data_list
+            name_to_task = {}
+            task_objects = []
+            for task_data in task_data_list:
+                parent_name = task_data.get('PARENT', '').strip()
+                is_subtask = bool(parent_name)
+                task = self.add_task_to_table(task_data, editable=False, is_subtask=is_subtask)
+                name_to_task[task.name] = task
+                task_objects.append({'task': task, 'task_data': task_data})
+
+            # Segundo paso: establecer las relaciones de padres
+            for task_info in task_objects:
+                task = task_info['task']
+                task_data = task_info['task_data']
+                parent_name = task_data.get('PARENT', '').strip()
+                if parent_name:
+                    parent_task = name_to_task.get(parent_name)
+                    if parent_task:
+                        task.parent_task = parent_task
+                        parent_task.subtasks.append(task)
+                        # Actualizar el botón de estado para mostrar que es una subtarea
+                        row = self.task_table.row(self.task_table.item(self.task_table.rowCount() - 1, 1))
+                        state_button = self.task_table.cellWidget(row, 0)
+                        if isinstance(state_button, StateButton):
+                            state_button.is_subtask = True
+                            state_button.update_text()
+                    else:
+                        print(f"Warning: parent task '{parent_name}' not found for task '{task.name}'")
+
             self.current_file_path = file_path
+            self.update_state_buttons()
+
             if hasattr(self, 'main_window'):
                 self.main_window.set_unsaved_changes(False)
                 self.main_window.update_gantt_chart()
             print(f"Archivo cargado desde: {file_path}")
+
         except Exception as e:
             print(f"Error al cargar el archivo: {e}")
 
-    def add_task_to_table(self, task_data, editable=False):
+    def add_task_to_table(self, task_data, editable=False, is_subtask=False, parent_task=None):
         row_position = self.task_table.rowCount()
         self.task_table.insertRow(row_position)
-
-        state_button = StateButton()
-        if not editable:
-            state_button.toggle_state()
-        self.task_table.setCellWidget(row_position, 0, state_button)
 
         task = Task(
             task_data.get('NAME', "Nueva Tarea"),
@@ -791,9 +898,18 @@ class TaskTableWidget(QWidget):
             task_data.get('NOTES', "")
         )
 
+        task.is_subtask = is_subtask
+        task.parent_task = parent_task
+
+        state_button = StateButton(is_subtask=is_subtask)
+        if not editable:
+            state_button.toggle_state()
+        state_button.set_task(task)
+        self.task_table.setCellWidget(row_position, 0, state_button)
+
         name_item = QTableWidgetItem(task.name)
-        name_item.setData(Qt.UserRole, task.color)
-        name_item.setData(Qt.UserRole + 1, task)
+        name_item.setData(Qt.ItemDataRole.UserRole, task.color)
+        name_item.setData(Qt.ItemDataRole.UserRole + 1, task)
         self.task_table.setItem(row_position, 1, name_item)
 
         # Fecha inicial
@@ -833,8 +949,13 @@ class TaskTableWidget(QWidget):
         # Conectar el botón de estado con el nuevo método
         state_button.clicked.connect(self.toggle_row_state)
 
+        # Asegúrate de que el botón de estado muestre el texto correcto
+        state_button.update_text()
+
         if hasattr(self, 'main_window'):
             self.main_window.update_gantt_chart()
+
+        return task
 
     def toggle_row_state(self):
         state_button = self.sender()
@@ -886,14 +1007,14 @@ class TaskTableWidget(QWidget):
             self.main_window.set_unsaved_changes(True)
             self.main_window.update_gantt_chart()
 
-    def insert_task_at_position(self, row, task_data):
+    def insert_task_at_position(self, row, task_data, is_subtask=False, parent_task=None):
         # Si row es mayor que el número de filas, inserta al final
         if row > self.task_table.rowCount():
             row = self.task_table.rowCount()
 
         self.task_table.insertRow(row)
 
-        state_button = StateButton()
+        state_button = StateButton(is_subtask=is_subtask)
         self.task_table.setCellWidget(row, 0, state_button)
 
         task = Task(
@@ -906,9 +1027,12 @@ class TaskTableWidget(QWidget):
             task_data.get('NOTES', "")
         )
 
+        task.is_subtask = is_subtask
+        task.parent_task = parent_task
+
         name_item = QTableWidgetItem(task.name)
-        name_item.setData(Qt.UserRole, task.color)
-        name_item.setData(Qt.UserRole + 1, task)
+        name_item.setData(Qt.ItemDataRole.UserRole, task.color)
+        name_item.setData(Qt.ItemDataRole.UserRole + 1, task)
         self.task_table.setItem(row, 1, name_item)
 
         # Fecha inicial
@@ -941,18 +1065,13 @@ class TaskTableWidget(QWidget):
 
         self.task_table.setRowHeight(row, self.main_window.ROW_HEIGHT)
 
-        # Conectar el botón de estado con el nuevo método
         state_button.clicked.connect(self.toggle_row_state)
-
-        # Después de insertar la tarea, selecciona la nueva fila
-        self.task_table.selectRow(row)
-
-        # Establecer el foco en el nombre de la nueva tarea
-        self.task_table.setCurrentCell(row, 1)
-        self.task_table.editItem(self.task_table.item(row, 1))
+        state_button.update_text()
 
         if hasattr(self, 'main_window'):
             self.main_window.set_unsaved_changes(True)
+
+        return task
 
     def sort_tasks_by_start_date(self):
         # Obtener todas las tareas
@@ -1041,6 +1160,42 @@ class TaskTableWidget(QWidget):
         elif logical_index == 3:  # 3 es el índice de la columna "Fecha final"
             self.sort_tasks_by_end_date()
 
+    def show_task_context_menu(self, position):
+        index = self.task_table.indexAt(position)
+        if index.isValid():
+            global_pos = self.task_table.viewport().mapToGlobal(position)
+            self.main_window.show_task_context_menu(global_pos, index.row())
+
+    def update_task_structure(self):
+        # Reconstruir la estructura de tareas
+        self.tasks = []
+        current_parent = None
+
+        for row in range(self.task_table.rowCount()):
+            name_item = self.task_table.item(row, 1)
+            task = name_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            if task:
+                if not task.is_subtask:
+                    current_parent = task
+                    current_parent.subtasks = []
+                    self.tasks.append(current_parent)
+                else:
+                    if current_parent:
+                        current_parent.subtasks.append(task)
+                        task.parent_task = current_parent
+
+        # Actualizar los botones de estado después de reconstruir la estructura
+        self.update_state_buttons()
+
+    def update_state_buttons(self):
+        for row in range(self.task_table.rowCount()):
+            name_item = self.task_table.item(row, 1)
+            task = name_item.data(Qt.ItemDataRole.UserRole + 1)
+            state_button = self.task_table.cellWidget(row, 0)
+            if task and isinstance(state_button, StateButton):
+                state_button.set_task(task)
+
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
 
@@ -1084,7 +1239,7 @@ class MainWindow(QMainWindow):
         left_widget.setMinimumWidth(int(self.width() * 0.43))
         main_layout.addWidget(left_widget)
 
-        self.gantt_widget = GanttWidget(self.tasks, self.ROW_HEIGHT)
+        self.gantt_widget = GanttWidget(self.tasks, self.ROW_HEIGHT, self)
         self.gantt_header = self.gantt_widget.header
         self.gantt_chart = self.gantt_widget.chart
         self.gantt_chart.main_window = self
@@ -1122,6 +1277,67 @@ class MainWindow(QMainWindow):
         if self.unsaved_changes != value:
             self.unsaved_changes = value
             self.update_title()
+
+    def delete_task(self, row):
+        if row >= 0:
+            # Obtener la tarea a eliminar
+            name_item = self.task_table.item(row, 1)
+            task = name_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            if task:
+                # Si es una subtarea, actualizar la tarea padre
+                if task.is_subtask and task.parent_task:
+                    task.parent_task.subtasks.remove(task)
+
+                # Si es una tarea padre, eliminar también sus subtareas
+                if not task.is_subtask:
+                    subtasks_to_remove = self.count_subtasks(row)
+                    for i in range(subtasks_to_remove + 1):
+                        self.task_table.removeRow(row)
+                else:
+                    # Si es una subtarea, solo eliminar la fila actual
+                    self.task_table.removeRow(row)
+
+                # Actualizar la estructura de datos
+                self.update_task_structure()
+
+                # Actualizar los botones de estado
+                self.task_table_widget.update_state_buttons()
+
+                self.set_unsaved_changes(True)
+                self.update_gantt_chart()
+
+    def update_task_structure(self):
+        # Reconstruir la estructura de tareas
+        self.tasks = []
+        current_parent = None
+
+        for row in range(self.task_table.rowCount()):
+            name_item = self.task_table.item(row, 1)
+            task = name_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            if task:
+                if not task.is_subtask:
+                    current_parent = task
+                    current_parent.subtasks = []
+                    self.tasks.append(current_parent)
+                else:
+                    if current_parent:
+                        current_parent.subtasks.append(task)
+                        task.parent_task = current_parent
+
+        self.update_state_buttons()  # Actualizar los botones de estado después de reconstruir la estructura
+
+    def count_subtasks(self, row):
+        count = 0
+        for i in range(row + 1, self.task_table.rowCount()):
+            task_item = self.task_table.item(i, 1)
+            task = task_item.data(Qt.UserRole + 1)
+            if hasattr(task, 'is_subtask') and task.is_subtask:
+                count += 1
+            else:
+                break
+        return count
 
     def sync_scroll(self):
         sender = self.sender()
@@ -1196,38 +1412,69 @@ class MainWindow(QMainWindow):
         self.update_gantt_chart()
 
     def show_task_context_menu(self, global_pos, task_index):
+        if task_index < 0 or task_index >= self.task_table.rowCount():
+            return
+
+        task_item = self.task_table.item(task_index, 1)
+        if not task_item:
+            return
+
+        task = task_item.data(Qt.ItemDataRole.UserRole + 1)
+        if not task:
+            return
+
         menu = QMenu()
         duplicate_action = menu.addAction("Duplicar")
-        insert_action = menu.addAction("Insertar")
+        if not task.is_subtask:
+            insert_action = menu.addAction("Insertar")
         move_up_action = menu.addAction("Mover arriba")
         move_down_action = menu.addAction("Mover abajo")
+        if not task.is_subtask:
+            add_subtask_action = menu.addAction("Agregar subtarea")
         delete_action = menu.addAction("Eliminar")
         reset_color_action = menu.addAction("Color por defecto")
 
         action = menu.exec(global_pos)
-        if action == duplicate_action:
+
+        # Manejar la acción seleccionada
+        if action:
+            self.handle_context_menu_action(action, task_index, task)
+
+        # Asegurarse de que el menú se cierre
+        menu.close()
+
+    def handle_context_menu_action(self, action, task_index, task):
+        action_text = action.text()
+        if action_text == "Duplicar":
             self.duplicate_task(task_index)
-        elif action == insert_action:
+        elif action_text == "Insertar" and not task.is_subtask:
             self.insert_task(task_index)
-        elif action == move_up_action:
+        elif action_text == "Mover arriba":
             self.move_task_up(task_index)
-        elif action == move_down_action:
+        elif action_text == "Mover abajo":
             self.move_task_down(task_index)
-        elif action == delete_action:
+        elif action_text == "Agregar subtarea" and not task.is_subtask:
+            self.add_subtask(task_index)
+        elif action_text == "Eliminar":
             self.delete_task(task_index)
-        elif action == reset_color_action:
+        elif action_text == "Color por defecto":
             self.reset_task_color(task_index)
 
     def show_context_menu(self, position):
         index = self.task_table.indexAt(position)
-        if index.column() == 1:
-            self.show_task_context_menu(self.task_table.viewport().mapToGlobal(position), index.row())
+        if index.isValid():
+            global_pos = self.task_table.viewport().mapToGlobal(position)
+            self.main_window.show_task_context_menu(global_pos, index.row())
 
     def duplicate_task(self, row):
         if row >= 0:
             name_item = self.task_table.item(row, 1)
-            task = name_item.data(Qt.UserRole + 1)
+            task = name_item.data(Qt.ItemDataRole.UserRole + 1)
             if task:
+                # Encontrar la última fila de la última subtarea de la tarea original
+                insert_row = self.find_last_subtask_row(row) + 1
+
+                # Duplicar la tarea principal
                 task_data = {
                     'NAME': task.name + " (copia)",
                     'START': task.start_date,
@@ -1237,30 +1484,73 @@ class MainWindow(QMainWindow):
                     'COLOR': task.color.name(),
                     'NOTES': task.notes
                 }
-                # Insertar la tarea duplicada justo después de la tarea original
-                self.task_table_widget.insert_task_at_position(row + 1, task_data)
+
+                new_task = self.task_table_widget.insert_task_at_position(insert_row, task_data, is_subtask=task.is_subtask, parent_task=task.parent_task)
+
+                # Si la tarea original es una subtarea, actualizar la relación con el padre
+                if task.is_subtask and task.parent_task:
+                    new_task.is_subtask = True
+                    new_task.parent_task = task.parent_task
+                    task.parent_task.subtasks.append(new_task)
+
+                # Duplicar las subtareas
+                for subtask in task.subtasks:
+                    insert_row += 1
+                    subtask_data = {
+                        'NAME': subtask.name + " (copia)",
+                        'START': subtask.start_date,
+                        'END': subtask.end_date,
+                        'DURATION': subtask.duration,
+                        'DEDICATION': subtask.dedication,
+                        'COLOR': subtask.color.name(),
+                        'NOTES': subtask.notes
+                    }
+                    new_subtask = self.task_table_widget.insert_task_at_position(insert_row, subtask_data, is_subtask=True, parent_task=new_task)
+                    new_task.subtasks.append(new_subtask)
+
                 self.update_gantt_chart()
                 self.set_unsaved_changes(True)
 
     def insert_task(self, row):
-        row += 1
+        # Encontrar la siguiente fila que no sea una subtarea
+        insert_row = row + 1
+        while insert_row < self.task_table.rowCount():
+            task_item = self.task_table.item(insert_row, 1)
+            task = task_item.data(Qt.ItemDataRole.UserRole + 1)
+            if not hasattr(task, 'is_subtask') or not task.is_subtask:
+                break
+            insert_row += 1
+
         task_data = {
             'NAME': "Nueva Tarea",
             'START': QDate.currentDate().toString("dd/MM/yyyy"),
             'END': QDate.currentDate().toString("dd/MM/yyyy"),
             'DURATION': "1",
             'DEDICATION': "40",
-            'COLOR': QColor(34,163,159).name()
+            'COLOR': QColor(34, 163, 159).name()
         }
-        self.task_table_widget.insert_task_at_position(row, task_data)
+        self.task_table_widget.insert_task_at_position(insert_row, task_data)
         self.update_gantt_chart()
         self.set_unsaved_changes(True)
 
         # Hacer visible la nueva tarea
-        self.task_table_widget.task_table.scrollToItem(self.task_table_widget.task_table.item(row, 1))
+        self.task_table_widget.task_table.scrollToItem(self.task_table_widget.task_table.item(insert_row, 1))
 
     def move_task_up(self, row):
         if row > 0:
+            # Verificar si la tarea actual es una subtarea
+            current_task_item = self.task_table.item(row, 1)
+            current_task = current_task_item.data(Qt.UserRole + 1)
+
+            # Verificar si la tarea de arriba es la tarea padre
+            above_task_item = self.task_table.item(row - 1, 1)
+            above_task = above_task_item.data(Qt.UserRole + 1)
+
+            # Si la tarea actual es una subtarea y la tarea de arriba es su padre, no permitir el movimiento
+            if hasattr(current_task, 'is_subtask') and current_task.is_subtask and above_task == current_task.parent_task:
+                return  # No hacer nada si es una subtarea intentando moverse sobre su padre
+
+            # Si no es una subtarea o no está intentando moverse sobre su padre, proceder con el movimiento
             self.task_table.insertRow(row - 1)
             for col in range(self.task_table.columnCount()):
                 self.task_table.setItem(row - 1, col, self.task_table.takeItem(row + 1, col))
@@ -1273,21 +1563,76 @@ class MainWindow(QMainWindow):
 
     def move_task_down(self, row):
         if row < self.task_table.rowCount() - 1:
-            self.task_table.insertRow(row + 2)
-            for col in range(self.task_table.columnCount()):
-                self.task_table.setItem(row + 2, col, self.task_table.takeItem(row, col))
-                self.task_table.setCellWidget(row + 2, col, self.task_table.cellWidget(row, col))
-            self.task_table.removeRow(row)
-            self.task_table.setCurrentCell(row + 1, 1)
-            self.adjust_row_heights()
-            self.set_unsaved_changes(True)
-            self.update_gantt_chart()
+            # Obtener la tarea actual
+            current_task_item = self.task_table.item(row, 1)
+            current_task = current_task_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            # Obtener la tarea siguiente
+            next_task_item = self.task_table.item(row + 1, 1)
+            next_task = next_task_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            # Verificar si la tarea actual es una subtarea
+            if hasattr(current_task, 'is_subtask') and current_task.is_subtask:
+                # Verificar si la tarea siguiente también es una subtarea del mismo padre
+                if hasattr(next_task, 'is_subtask') and next_task.is_subtask and current_task.parent_task == next_task.parent_task:
+                    # Mover la subtarea hacia abajo
+                    self.task_table.insertRow(row + 2)
+                    for col in range(self.task_table.columnCount()):
+                        self.task_table.setItem(row + 2, col, self.task_table.takeItem(row, col))
+                        self.task_table.setCellWidget(row + 2, col, self.task_table.cellWidget(row, col))
+                    self.task_table.removeRow(row)
+                    self.task_table.setCurrentCell(row + 1, 1)
+                    self.adjust_row_heights()
+                    self.set_unsaved_changes(True)
+                    self.update_gantt_chart()
+                else:
+                    # No se puede mover la subtarea porque la tarea siguiente no es una subtarea del mismo padre
+                    pass
+            else:
+                # Contar cuántas subtareas tiene la tarea actual
+                subtask_count = self.count_subtasks(row)
+
+                # Verificar si hay una tarea después de las subtareas
+                if row + subtask_count + 1 < self.task_table.rowCount():
+                    # Obtener la tarea que está debajo
+                    next_task_item = self.task_table.item(row + subtask_count + 1, 1)
+                    next_task = next_task_item.data(Qt.ItemDataRole.UserRole + 1)
+
+                    # Calcular la fila de inserción (después de las subtareas de la tarea inferior)
+                    insert_row = row + subtask_count + 1 + self.count_subtasks(row + subtask_count + 1) + 1
+
+                    # Mover la tarea actual y sus subtareas a la nueva posición
+                    self.move_task_and_subtasks(row, subtask_count, insert_row)
+
+                    self.task_table.setCurrentCell(insert_row - subtask_count - 1, 1)
+                    self.adjust_row_heights()
+                    self.set_unsaved_changes(True)
+                    self.update_gantt_chart()
+                else:
+                    # Es la última tarea padre con subtareas, no hacer nada
+                    pass
 
     def delete_task(self, row):
         if row >= 0:
-            self.task_table.removeRow(row)
-            self.set_unsaved_changes(True)
-            self.update_gantt_chart()
+            # Obtener la tarea a eliminar
+            name_item = self.task_table.item(row, 1)
+            task = name_item.data(Qt.UserRole + 1)
+
+            if task:
+                # Si es una tarea padre, eliminar también sus subtareas
+                if not task.is_subtask:
+                    subtasks_to_remove = self.count_subtasks(row)
+                    for i in range(subtasks_to_remove + 1):
+                        self.task_table.removeRow(row)
+                else:
+                    # Si es una subtarea, solo eliminar la fila actual
+                    self.task_table.removeRow(row)
+
+                # Actualizar la estructura de datos
+                self.update_task_structure()
+
+                self.set_unsaved_changes(True)
+                self.update_gantt_chart()
 
     def reset_task_color(self, row):
         if row >= 0:
@@ -1305,9 +1650,9 @@ class MainWindow(QMainWindow):
         for row in range(self.task_table_widget.task_table.rowCount()):
             name_item = self.task_table_widget.task_table.item(row, 1)
             if name_item is not None:
-                task = name_item.data(Qt.UserRole + 1)
+                task = name_item.data(Qt.ItemDataRole.UserRole + 1)
                 if task:
-                    task.name = name_item.text()
+                    # Actualizar la información de la tarea
                     start_date_widget = self.task_table_widget.task_table.cellWidget(row, 2)
                     end_date_widget = self.task_table_widget.task_table.cellWidget(row, 3)
                     duration_widget = self.task_table_widget.task_table.cellWidget(row, 4)
@@ -1322,7 +1667,15 @@ class MainWindow(QMainWindow):
                     if isinstance(dedication_widget, QLineEdit):
                         task.dedication = dedication_widget.text()
 
-                    task.color = name_item.data(Qt.UserRole) or QColor(34, 163, 159)
+                    task.color = name_item.data(Qt.ItemDataRole.UserRole) or QColor(34, 163, 159)
+
+                    # Actualizar el botón de estado
+                    state_button = self.task_table_widget.task_table.cellWidget(row, 0)
+                    if isinstance(state_button, StateButton):
+                        state_button.is_subtask = task.is_subtask
+                        state_button.update_text()
+
+                    # Agregar todas las tareas, incluyendo subtareas
                     self.tasks.append(task)
 
         if self.tasks:
@@ -1507,6 +1860,74 @@ class MainWindow(QMainWindow):
             self.set_complete_view()
         else:  # Si ya está en "complete"
             self.wheel_accumulator = 0  # Reiniciar el acumulador
+
+    def add_subtask(self, parent_task_index):
+        parent_task_item = self.task_table.item(parent_task_index, 1)
+        parent_task = parent_task_item.data(Qt.ItemDataRole.UserRole + 1)
+
+        # Actualizar el botón de estado de la tarea padre
+        parent_state_button = self.task_table.cellWidget(parent_task_index, 0)
+        parent_state_button.has_subtasks = True
+        parent_state_button.update_text()
+
+        # Crear una nueva subtarea
+        subtask_data = {
+            'NAME': f"Subtarea de {parent_task.name}",
+            'START': parent_task.start_date,
+            'END': parent_task.end_date,
+            'DURATION': "1",
+            'DEDICATION': "40",
+            'COLOR': parent_task.color.lighter(120).name(),
+            'NOTES': ""
+        }
+
+        # Insertar la subtarea en la tabla
+        new_task = self.task_table_widget.insert_task_at_position(parent_task_index + 1, subtask_data, is_subtask=True, parent_task=parent_task)
+        new_task.is_subtask = True
+        new_task.parent_task = parent_task
+
+        # Actualizar el gráfico de Gantt
+        self.update_gantt_chart()
+        self.set_unsaved_changes(True)
+
+    def count_subtasks(self, row):
+        count = 0
+        for i in range(row + 1, self.task_table.rowCount()):
+            task_item = self.task_table.item(i, 1)
+            task = task_item.data(Qt.UserRole + 1)
+            if hasattr(task, 'is_subtask') and task.is_subtask:
+                count += 1
+            else:
+                break
+        return count
+
+    def move_task_and_subtasks(self, row, subtask_count, insert_row):
+        # Mover la tarea principal
+        self.task_table.insertRow(insert_row)
+        for col in range(self.task_table.columnCount()):
+            self.task_table.setItem(insert_row, col, self.task_table.takeItem(row, col))
+            self.task_table.setCellWidget(insert_row, col, self.task_table.cellWidget(row, col))
+
+        # Mover las subtareas
+        for i in range(subtask_count):
+            self.task_table.insertRow(insert_row + i + 1)
+            for col in range(self.task_table.columnCount()):
+                self.task_table.setItem(insert_row + i + 1, col, self.task_table.takeItem(row + i + 1, col))
+                self.task_table.setCellWidget(insert_row + i + 1, col, self.task_table.cellWidget(row + i + 1, col))
+
+        # Eliminar las filas originales
+        for _ in range(subtask_count + 1):
+            self.task_table.removeRow(row)
+
+    def find_last_subtask_row(self, start_row):
+        last_row = start_row
+        for row in range(start_row + 1, self.task_table.rowCount()):
+            task_item = self.task_table.item(row, 1)
+            task = task_item.data(Qt.ItemDataRole.UserRole + 1)
+            if not task.is_subtask:
+                break
+            last_row = row
+        return last_row
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
