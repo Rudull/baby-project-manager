@@ -2,7 +2,11 @@
 
 0*. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
 
-1. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando
+ Para el programa dado cambia el modelo de datos QTableWidget por QAbstractTableModel junto con QTableView
+
+1. Aregler movimento arriba tareas
+1. Los cambios de color de las tareas padre deben ser aplicados a las tares hijo
+1. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
 2. Implementar division de semanas
 3. Implementar subtareas
 4. Implementar importasion de archivos *.ppm
