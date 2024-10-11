@@ -19,9 +19,9 @@
 11. Implementar arrastrar y soltar
 12. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
-13. def sort_tasks_by_start_date(self):
+Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y está en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un mero de lera más pequeño, no está en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta.
 
-10. Revisar def scrollTo(self, value):
+Para el PDF compartido que corresponde a un cronograma. Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y están en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un numero de lera más pequeño, no están en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta. Dime si existe una forma de relacionar las tareas padre con sus subtareas y representarlo en la table que genera la aplicación? . Que se debe ajustar el el aplicativo que te comparto para lograr identificar dicha relasion entre tareas?
 
 ↳
 
