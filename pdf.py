@@ -26,10 +26,10 @@ class MainWindow(QMainWindow):
         self.search_bar.setPlaceholderText("Search tasks (comma-separated for multiple terms)...")
         self.search_bar.textChanged.connect(self.filter_tasks)
         search_layout.addWidget(self.search_bar)
-        
+
         self.task_counter = QLabel("Tasks found: 0")
         search_layout.addWidget(self.task_counter)
-        
+
         main_layout.addLayout(search_layout)
 
         # Table to display tasks
@@ -95,18 +95,18 @@ class MainWindow(QMainWindow):
 
     def filter_tasks(self):
         search_terms = [self.normalize_string(term.strip()) for term in self.search_bar.text().split(',') if term.strip()]
-        
+
         visible_tasks = 0
         for row in range(self.table.rowCount()):
             task_name = self.normalize_string(self.table.item(row, 3).text())
-            
+
             # If all search terms are in the task name (regardless of order), show the row
             if all(term in task_name for term in search_terms):
                 self.table.setRowHidden(row, False)
                 visible_tasks += 1
             else:
                 self.table.setRowHidden(row, True)
-        
+
         self.update_task_counter(visible_tasks)
 
     def update_task_counter(self, count=None):

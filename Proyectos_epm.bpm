@@ -105,22 +105,12 @@ NOTES:
 [/TASK]
 
 [TASK]
-NAME: Malena Detallada (copia)
+NAME: Girardota Provisionales 44
 PARENT:
-START: 28/01/2025
-END: 03/12/2025
-DURATION: 210
+START: 30/01/2026
+END: 17/03/2026
+DURATION: 33
 DEDICATION: 100
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: 1
-PARENT:
-START: 28/03/2025
-END: 29/08/2025
-DURATION: 103
-DEDICATION: 40
 NOTES: 
 [/TASK]
 
@@ -135,89 +125,7 @@ NOTES:
 [/TASK]
 
 [TASK]
-NAME: 1
-PARENT:
-START: 28/01/2025
-END: 29/07/2025
-DURATION: 124
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: Girardota Provisional T1
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 33
-DEDICATION: 100
-NOTES: 1. Se implementa diferencial de barras provisional 110 kV. El IED sera el que se encuentra en SE Cotdova.
-NOTES: 2. Se debe implementar diferencial de barras provisional para 13.2 kV para la bahia movil de 13.2 kV
-NOTES: 3. Verificar si se requiere diferenceal de barras para 44 kV
-[/TASK]
-
-[TASK]
-NAME: 2
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 1
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: 4
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 1
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: 1
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 1
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: 5
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 1
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: 2 (copia)
-PARENT:
-START: 01/11/2024
-END: 19/12/2024
-DURATION: 1
-DEDICATION: 40
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: Girardota Provisionales 44
-PARENT:
-START: 30/01/2026
-END: 17/03/2026
-DURATION: 33
-DEDICATION: 100
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: Girardota Etapa 1 EXTR (copia)
+NAME: Girardota Etapa 1 EXTR
 PARENT:
 START: 18/03/2026
 END: 18/03/2027
@@ -237,13 +145,35 @@ NOTES:
 [/TASK]
 
 [TASK]
-NAME: Girardota Etapa 1 EXTR
-PARENT:
-START: 18/03/2026
-END: 18/03/2027
-DURATION: 244
-DEDICATION: 100
+NAME: 2
+PARENT: Guarne Detallada 110
+START: 22/01/2026
+END: 10/07/2026
+DURATION: 1
+DEDICATION: 40
 NOTES: 
+[/TASK]
+
+[TASK]
+NAME: 1
+PARENT: Guarne Detallada 110
+START: 22/01/2026
+END: 10/07/2026
+DURATION: 1
+DEDICATION: 40
+NOTES: 
+[/TASK]
+
+[TASK]
+NAME: Girardota Provisional T1
+PARENT:
+START: 01/11/2024
+END: 19/12/2024
+DURATION: 33
+DEDICATION: 100
+NOTES: 1. Se implementa diferencial de barras provisional 110 kV. El IED sera el que se encuentra en SE Cotdova.
+NOTES: 2. Se debe implementar diferencial de barras provisional para 13.2 kV para la bahia movil de 13.2 kV
+NOTES: 3. Verificar si se requiere diferenceal de barras para 44 kV
 [/TASK]
 
 [TASK]
@@ -363,16 +293,6 @@ START: 27/09/2028
 END: 18/12/2028
 DURATION: 55
 DEDICATION: 100
-NOTES: 
-[/TASK]
-
-[TASK]
-NAME: Nueva Tarea
-PARENT:
-START: 09/10/2024
-END: 09/10/2024
-DURATION: 1
-DEDICATION: 40
 NOTES: 
 [/TASK]
 
