@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton,
     QTextEdit, QFileDialog, QMessageBox
@@ -17,7 +18,7 @@ class HyperlinkTextEdit(QTextEdit):
         self.hyperlink_format.setForeground(QColor(0, 0, 255))  # Color azul
         self.hyperlink_format.setFontUnderline(True)
         self.hyperlink_format.setFontItalic(True)
-        
+
         self.normal_format = QTextCharFormat()
         self.normal_format.setForeground(QColor(0, 0, 0))  # Color negro
         self.normal_format.setFontUnderline(False)
@@ -25,13 +26,13 @@ class HyperlinkTextEdit(QTextEdit):
 
     def mouseDoubleClickEvent(self, event):
         cursor = self.textCursor()
-        cursor.select(QTextCursor.LineUnderCursor)
+        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
         line = cursor.selectedText().strip()
         self.doubleClicked.emit(line)
 
     def insertHyperlink(self, text):
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.End)
+        cursor.movePosition(QTextCursor.MoveOperation.End)
         cursor.insertText(text, self.hyperlink_format)
         cursor.insertText(" ", self.normal_format)  # Añade un espacio con formato normal
         self.setTextCursor(cursor)  # Coloca el cursor después del espacio
@@ -91,29 +92,21 @@ class NotesApp(QMainWindow):
     def open_hyperlink(self, line):
         file_path = self.file_links.get(line)
         if file_path and os.path.exists(file_path):
-            os.startfile(file_path)
+            try:
+                if sys.platform.startswith('darwin'):  # macOS
+                    subprocess.call(('open', file_path))
+                elif sys.platform.startswith('win32'):  # Windows
+                    os.startfile(file_path)
+                else:  # Linux y otros sistemas Unix
+                    subprocess.call(('xdg-open', file_path))
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
         else:
             QMessageBox.warning(self, "Error", "No se pudo abrir el archivo.")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    
-    # Configurar la paleta de colores
-    palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(240, 240, 240))
-    palette.setColor(QPalette.WindowText, QColor(0, 0, 0))
-    palette.setColor(QPalette.Base, QColor(255, 255, 255))
-    palette.setColor(QPalette.AlternateBase, QColor(245, 245, 245))
-    palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 220))
-    palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))
-    palette.setColor(QPalette.Text, QColor(0, 0, 0))
-    palette.setColor(QPalette.Button, QColor(240, 240, 240))
-    palette.setColor(QPalette.ButtonText, QColor(0, 0, 0))
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Highlight, QColor(76, 163, 224))
-    palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-    app.setPalette(palette)
 
     notes_app = NotesApp()
     notes_app.show()
