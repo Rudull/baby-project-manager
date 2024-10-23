@@ -6,6 +6,11 @@ import re
 from datetime import datetime
 import unicodedata
 
+class TaskTreeNode:
+    def __init__(self, task):
+        self.task = task
+        self.children = []
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -44,6 +49,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         self.tasks = []
+        self.task_tree = []
         self.source_file = ""
 
     def load_pdf(self):
@@ -55,6 +61,7 @@ class MainWindow(QMainWindow):
 
     def extract_tasks(self, file_path):
         self.tasks = []
+        self.task_tree = []
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
                 text = page.extract_text()
@@ -66,7 +73,7 @@ class MainWindow(QMainWindow):
                         mode_id, task_id, task_name, _, start_date, end_date = match.groups()
                         indentation = len(line) - len(line.lstrip())
                         level = indentation // 8  # Assuming 8 spaces per indentation level
-                        self.tasks.append({
+                        task = {
                             'mode_id': mode_id,
                             'task_id': task_id,
                             'level': level,
@@ -74,7 +81,17 @@ class MainWindow(QMainWindow):
                             'start_date': start_date,
                             'end_date': end_date,
                             'indentation': indentation
-                        })
+                        }
+                        self.tasks.append(task)
+                        self.task_tree.append(TaskTreeNode(task))
+
+        # Creamos la jerarquía de tareas
+        for i in range(len(self.task_tree)):
+            node = self.task_tree[i]
+            if i > 0:
+                prev_node = self.task_tree[i-1]
+                if node.task['level'] > prev_node.task['level']:
+                    prev_node.children.append(node)
 
     def populate_table(self):
         self.table.setRowCount(len(self.tasks))
@@ -82,7 +99,11 @@ class MainWindow(QMainWindow):
             self.table.setItem(row, 0, QTableWidgetItem(task['mode_id']))
             self.table.setItem(row, 1, QTableWidgetItem(task['task_id']))
             self.table.setItem(row, 2, QTableWidgetItem(str(task['level'])))
-            self.table.setItem(row, 3, QTableWidgetItem('  ' * task['level'] + task['name']))
+            if task['level'] > 0:
+                parent_task = self.task_tree[row-1].task
+                self.table.setItem(row, 3, QTableWidgetItem(f"{parent_task['name']} -> {task['name']}"))
+            else:
+                self.table.setItem(row, 3, QTableWidgetItem('  ' * task['level'] + task['name']))
             self.table.setItem(row, 4, QTableWidgetItem(task['start_date']))
             self.table.setItem(row, 5, QTableWidgetItem(task['end_date']))
             self.table.setItem(row, 6, QTableWidgetItem(self.source_file))
