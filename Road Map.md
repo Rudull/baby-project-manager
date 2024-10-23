@@ -1,27 +1,20 @@
 ## Road Map
 
-0*. Oganizar automaticamente por fecha final o fecha de inicio y orden alfabetico (usar encabezado de table)
-
- Para el programa dado cambia el modelo de datos QTableWidget por QAbstractTableModel junto con QTableView
-
-1. Aregler movimento arriba tareas
-1. Los cambios de color de las tareas padre deben ser aplicados a las tares hijo
-1. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
-2. Implementar division de semanas
-3. Implementar subtareas
-4. Implementar importasion de archivos *.ppm
-5. Implementar rodar tarea
-6. Sombrear tarea seleccionada
+1. Implementar hipervinculos en cuadro de notas
+2. Implementar importasion de archivos *.ppm
+3. Implementar que la tarea padre sea la superoposicion de las subtareas
+4. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
+5. El scroll debe poder fuecionar sobre el diagrama de Gantt
+6. Implementar rodar tarea
 7. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-8. Dibujar linea de separacion de acuerdo al periodo selecciodo
-9. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas
-10. Extender lineas vertivales da año al Gantt
-11. Implementar arrastrar y soltar
-12. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+8. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
+9. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
+10. Implementar arrastrar y soltar
+11. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
-Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y está en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un mero de lera más pequeño, no está en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta.
+QTableWidget por QAbstractTableModel junto con QTableView
 
-Para el PDF compartido que corresponde a un cronograma. Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y están en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un numero de lera más pequeño, no están en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta. Dime si existe una forma de relacionar las tareas padre con sus subtareas y representarlo en la table que genera la aplicación? . Que se debe ajustar el el aplicativo que te comparto para lograr identificar dicha relasion entre tareas?
+Para el PDF compartido que corresponde a un cronograma. Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y están en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un número de letra más pequeño, no están en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta. Dime si existe una forma de relacionar las tareas padre con sus subtareas y representarlo en la tabla que genera la aplicación. ¿Qué se debe ajustar el aplicativo que te comparto para lograr identificar dicha relación entre tareas?
 
 ↳
 
