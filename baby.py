@@ -1,7 +1,10 @@
-# Hipervinculos en notas 1
+# Hipervinculos en notas 8
+import os
 import sys
 import inspect
 import math
+import ast
+import subprocess
 from datetime import timedelta, datetime
 from workalendar.america import Colombia
 from PySide6.QtWidgets import (
@@ -12,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette, QContextMenuEvent, QKeySequence, QShortcut, QWheelEvent
 from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal, QPoint, QAbstractTableModel, QModelIndex
+from hipervinculo import HyperlinkTextEdit
 
 class LineEditDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
@@ -162,19 +166,21 @@ class StateButtonDelegate(QStyledItemDelegate):
         return QSize(25, 25)
 
 class Task:
-    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes=""):
+    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes="", notes_html="", file_links=None):
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
         self.duration = duration
         self.dedication = dedication
-        self.color = color or QColor(34, 163, 159)  # Color por defecto si no se especifica
+        self.color = color or QColor(34, 163, 159)
         self.notes = notes
-        self.subtasks = []  # Lista para almacenar las subtareas
+        self.notes_html = notes_html
+        self.file_links = file_links or {}
+        self.subtasks = []
         self.is_subtask = False
         self.parent_task = None
-        self.is_editing = False  # Inicializar el atributo is_editing
-        self.is_collapsed = False  # Nuevo atributo para el estado de colapso
+        self.is_editing = False
+        self.is_collapsed = False
 
     def has_subtasks(self):
         return bool(self.subtasks)
@@ -990,7 +996,7 @@ class FloatingTaskMenu(QWidget):
     def __init__(self, task, parent=None):
         super().__init__(parent)
         self.task = task
-        self.cal = Colombia()  # crear una instancia del calendario
+        self.cal = Colombia()
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -998,7 +1004,7 @@ class FloatingTaskMenu(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        name_label = QLabel(f"{self.task.name}")  # Usar self.task.name en lugar de task.name
+        name_label = QLabel(f"{self.task.name}")
         start_label = QLabel(f"Inicio: {self.task.start_date}")
         end_label = QLabel(f"Fin: {self.task.end_date}")
 
@@ -1008,21 +1014,25 @@ class FloatingTaskMenu(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignRight)
             layout.addWidget(label)
 
-        self.notes_edit = QTextEdit(self)
-        self.notes_edit.setPlainText(self.task.notes)
+        self.notes_edit = HyperlinkTextEdit(self)
+        self.notes_edit.setHtml(self.task.notes_html)
+        self.notes_edit.file_links = self.task.file_links
         self.notes_edit.setMinimumHeight(100)
         layout.addWidget(self.notes_edit)
 
-        self.setMinimumWidth(250)  # Ajusta este valor según tus necesidades
-        self.setMaximumWidth(400)  # Ajusta este valor según tus necesidades
-        self.setMaximumHeight(300)  # Ajusta este valor según tus necesidades
+        self.notes_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.notes_edit.customContextMenuRequested.connect(self.show_notes_context_menu)
+
+        self.setMinimumWidth(250)
+        self.setMaximumWidth(400)
+        self.setMaximumHeight(300)
 
         self.adjustSize()
         self.update_colors()
 
         self.notes_edit.textChanged.connect(self.update_task_notes)
+        self.notes_edit.doubleClicked.connect(self.open_hyperlink)
 
-        # Inicializar el estado de edición
         self.is_editing = False
 
     def calculate_working_days_left(self):
@@ -1047,20 +1057,23 @@ class FloatingTaskMenu(QWidget):
         return working_days
 
     def update_task_notes(self):
-        if self.task.notes != self.notes_edit.toPlainText():
+        if self.task.notes_html != self.notes_edit.toHtml():
+            self.task.notes_html = self.notes_edit.toHtml()
             self.task.notes = self.notes_edit.toPlainText()
-            self.notesChanged.emit()  # Emite la señal cuando las notas cambian
-            self.is_editing = True  # Establecer el estado de edición
+            self.task.file_links = self.notes_edit.file_links
+            self.notesChanged.emit()
+            self.is_editing = True
 
     def update_colors(self):
         palette = self.palette()
         self.background_color = palette.color(QPalette.ColorRole.Window)
         self.text_color = palette.color(QPalette.ColorRole.WindowText)
+        self.update()  # Forzar repintado
 
     def paintEvent(self, event):
         with QPainter(self) as painter:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            painter.fillRect(event.rect(), self.background_color)  # Correcto uso de event.rect()
+            painter.fillRect(event.rect(), self.background_color)
             painter.setBrush(self.background_color)
             painter.setPen(Qt.PenStyle.NoPen)
             path = QPainterPath()
@@ -1070,8 +1083,8 @@ class FloatingTaskMenu(QWidget):
     def changeEvent(self, event):
         if event.type() == QEvent.Type.PaletteChange:
             self.update_colors()
-            for child in self.findChildren(QLabel):
-                child.setStyleSheet(f"color: {self.text_color.name()};")
+            for child in self.findChildren((QLabel, HyperlinkTextEdit)):
+                child.setPalette(self.palette())
             self.update()
         super().changeEvent(event)
 
@@ -1080,13 +1093,42 @@ class FloatingTaskMenu(QWidget):
 
     def toggle_editing(self):
         self.is_editing = not self.is_editing
-        # Aquí puedes agregar cualquier lógica adicional relacionada con el cambio de estado de edición
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         else:
             super().keyPressEvent(event)
+
+    def open_file_dialog_for_link(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar archivo")
+        if file_path:
+            file_name = os.path.basename(file_path)
+            self.notes_edit.insertHyperlink(file_name)
+            self.notes_edit.file_links[file_name] = file_path
+
+    def open_hyperlink(self, line):
+        file_path = self.notes_edit.file_links.get(line)
+        if file_path and os.path.exists(file_path):
+            try:
+                if sys.platform.startswith('darwin'):  # macOS
+                    subprocess.call(('open', file_path))
+                elif sys.platform.startswith('win32'):  # Windows
+                    os.startfile(file_path)
+                else:  # Linux y otros sistemas Unix
+                    subprocess.call(('xdg-open', file_path))
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
+        else:
+            QMessageBox.warning(self, "Error", "No se pudo abrir el archivo.")
+
+    def show_notes_context_menu(self, position):
+        menu = QMenu(self)
+        add_link_action = menu.addAction("Agregar Hipervínculo")
+
+        action = menu.exec(self.notes_edit.mapToGlobal(position))
+        if action == add_link_action:
+            self.open_file_dialog_for_link()
 
 class TaskTableWidget(QWidget):
     taskDataChanged = Signal()
@@ -1323,7 +1365,7 @@ class TaskTableWidget(QWidget):
 
     def save_tasks_to_file(self, file_path):
         try:
-            with open(file_path, 'w') as file:
+            with open(file_path, 'w', encoding='utf-8') as file:
                 for task in self.model.tasks:
                     file.write("[TASK]\n")
                     file.write(f"NAME: {task.name}\n")
@@ -1339,8 +1381,12 @@ class TaskTableWidget(QWidget):
                     file.write(f"DEDICATION: {dedication}\n")
                     file.write(f"COLOR: {task.color.name()}\n")
                     file.write(f"COLLAPSED: {task.is_collapsed}\n")
-                    for note_line in task.notes.split('\n'):
-                        file.write(f"NOTES: {note_line}\n")
+                    file.write("NOTES_HTML_BEGIN\n")
+                    file.write(task.notes_html)
+                    file.write("\nNOTES_HTML_END\n")
+                    file.write("FILE_LINKS_BEGIN\n")
+                    file.write(repr(task.file_links))
+                    file.write("\nFILE_LINKS_END\n")
                     file.write("[/TASK]\n\n")
             self.current_file_path = file_path
             print(f"Archivo guardado en: {file_path}")
@@ -1353,61 +1399,79 @@ class TaskTableWidget(QWidget):
         try:
             self.model.beginResetModel()
             self.model.tasks = []
-            with open(file_path, 'r') as file:
-                task_data_list = []
-                task_data = {}
-                notes = []
-                for line in file:
-                    line = line.strip()
-                    if line == "[TASK]":
+            tasks_with_parents = []
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+                tasks_data = content.split("[TASK]")
+                for task_block in tasks_data:
+                    if "[/TASK]" in task_block:
                         task_data = {}
-                        notes = []
-                    elif line == "[/TASK]":
-                        task_data['NOTES'] = '\n'.join(notes)
-                        task_data_list.append(task_data)
-                    elif ":" in line:
-                        key, value = line.split(":", 1)
-                        key = key.strip()
-                        value = value.strip()
-                        if key == "NOTES":
-                            notes.append(value)
-                        else:
-                            task_data[key] = value
-
-            # Procesar task_data_list
-            name_to_task = {}
-            for task_data in task_data_list:
-                parent_name = task_data.get('PARENT', '').strip()
-                is_subtask = bool(parent_name)
-                task = Task(
-                    task_data.get('NAME', "Nueva Tarea"),
-                    task_data.get('START', QDate.currentDate().toString("dd/MM/yyyy")),
-                    task_data.get('END', QDate.currentDate().addDays(1).toString("dd/MM/yyyy")),
-                    task_data.get('DURATION', "1"),
-                    task_data.get('DEDICATION', "40"),
-                    QColor(task_data.get('COLOR', '#22a39f')) if 'COLOR' in task_data else QColor(34, 163, 159),
-                    task_data.get('NOTES', "")
-                )
-                task.is_subtask = is_subtask
-                task.parent_task = None  # Se establecerá después
-                task.is_editing = False  # Asegurarse de que is_editing se inicialice correctamente
-                task.is_collapsed = task_data.get('COLLAPSED', 'False') == 'True'  # Inicializar is_collapsed
-
-                self.model.tasks.append(task)
-                name_to_task[task.name] = task
-
+                        lines = task_block.split("\n")
+                        notes_html = ""
+                        file_links_str = ""
+                        reading_notes = False
+                        reading_links = False
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith("NAME:"):
+                                task_data['NAME'] = line[5:].strip()
+                            elif line.startswith("PARENT:"):
+                                task_data['PARENT'] = line[7:].strip()
+                            elif line.startswith("START:"):
+                                task_data['START'] = line[6:].strip()
+                            elif line.startswith("END:"):
+                                task_data['END'] = line[4:].strip()
+                            elif line.startswith("DURATION:"):
+                                task_data['DURATION'] = line[9:].strip()
+                            elif line.startswith("DEDICATION:"):
+                                task_data['DEDICATION'] = line[11:].strip()
+                            elif line.startswith("COLOR:"):
+                                task_data['COLOR'] = line[6:].strip()
+                            elif line.startswith("COLLAPSED:"):
+                                task_data['COLLAPSED'] = line[10:].strip()
+                            elif line == "NOTES_HTML_BEGIN":
+                                reading_notes = True
+                                notes_html = ""
+                            elif line == "NOTES_HTML_END":
+                                reading_notes = False
+                                task_data['NOTES_HTML'] = notes_html
+                            elif line == "FILE_LINKS_BEGIN":
+                                reading_links = True
+                                file_links_str = ""
+                            elif line == "FILE_LINKS_END":
+                                reading_links = False
+                                task_data['FILE_LINKS'] = ast.literal_eval(file_links_str)
+                            elif reading_notes:
+                                notes_html += line + "\n"
+                            elif reading_links:
+                                file_links_str += line + "\n"
+                        # Crear la instancia de Task
+                        task = Task(
+                            name=task_data.get('NAME', "Nueva Tarea"),
+                            start_date=task_data.get('START', QDate.currentDate().toString("dd/MM/yyyy")),
+                            end_date=task_data.get('END', QDate.currentDate().addDays(1).toString("dd/MM/yyyy")),
+                            duration=task_data.get('DURATION', "1"),
+                            dedication=task_data.get('DEDICATION', "40"),
+                            color=QColor(task_data.get('COLOR', '#22a39f')) if 'COLOR' in task_data else QColor(34, 163, 159),
+                            notes=task_data.get('NOTES', ""),
+                            notes_html=task_data.get('NOTES_HTML', ""),
+                            file_links=task_data.get('FILE_LINKS', {})
+                        )
+                        parent_name = task_data.get('PARENT', '').strip()
+                        task.is_subtask = bool(parent_name)
+                        task.is_collapsed = task_data.get('COLLAPSED', 'False') == 'True'
+                        self.model.tasks.append(task)
+                        tasks_with_parents.append((task, parent_name))
             # Establecer relaciones de padres
-            for task_data in task_data_list:
-                parent_name = task_data.get('PARENT', '').strip()
+            name_to_task = {task.name: task for task in self.model.tasks}
+            for task, parent_name in tasks_with_parents:
                 if parent_name:
-                    task = next((t for t in self.model.tasks if t.name == task_data.get('NAME', '')), None)
                     parent_task = name_to_task.get(parent_name)
-                    if task and parent_task:
+                    if parent_task:
                         task.parent_task = parent_task
                         parent_task.subtasks.append(task)
                     else:
-                        print(f"Warning: parent task '{parent_name}' not found for task '{task_data.get('NAME', '')}'")
-
+                        print(f"Tarea padre con nombre '{parent_name}' no encontrada para la tarea '{task.name}'")
             self.model.update_visible_tasks()
             self.model.endResetModel()
             self.current_file_path = file_path
@@ -1426,7 +1490,8 @@ class TaskTableWidget(QWidget):
             task_data.get('DURATION', "1"),
             task_data.get('DEDICATION', "40"),
             QColor(task_data.get('COLOR', '#22a39f')),
-            task_data.get('NOTES', "")
+            task_data.get('NOTES_HTML', ""),
+            task_data.get('FILE_LINKS', {})
         )
         task.is_editing = editable  # Establecer is_editing según el parámetro editable
         task.is_collapsed = False  # Inicializar is_collapsed
@@ -2409,30 +2474,6 @@ if __name__ == "__main__":
     app.setStyle("Fusion")  # Usar el estilo Fusion que soporta temas oscuros/claros
     # Aplicar la paleta del sistema
     app.setPalette(app.style().standardPalette())
-
-    # Verificar el uso correcto de QStyle en los métodos paint
-    def verify_qstyle_usage():
-        for cls in [StateButtonDelegate, GanttChart, GanttHeaderView]:
-            if hasattr(cls, 'paint'):
-                paint_method = getattr(cls, 'paint')
-                try:
-                    source = inspect.getsource(paint_method)
-                    # Buscar usos incorrectos de option.rect()
-                    if 'option.rect()' in source:
-                        print(f"Advertencia: Uso incorrecto de option.rect() en {cls.__name__}.paint. Debería ser option.rect")
-                except Exception as e:
-                    print(f"No se pudo obtener el código fuente de {cls.__name__}.paint: {e}")
-            elif hasattr(cls, 'paintEvent'):
-                paint_event = getattr(cls, 'paintEvent')
-                try:
-                    source = inspect.getsource(paint_event)
-                    # Buscar usos incorrectos de event.rect sin paréntesis
-                    if 'event.rect' in source and not 'event.rect()' in source:
-                        print(f"Advertencia: Uso incorrecto de event.rect en {cls.__name__}.paintEvent. Debería ser event.rect()")
-                except Exception as e:
-                    print(f"No se pudo obtener el código fuente de {cls.__name__}.paintEvent: {e}")
-
-    verify_qstyle_usage()
 
     window = MainWindow()
     window.show()
