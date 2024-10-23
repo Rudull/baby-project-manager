@@ -1,8 +1,11 @@
 ## Road Map
 
+En Windowns al seleccionar la opcion de agregar hipervinculo no sucede nada. la ventana para seleccionar el archivo no se despliega
+
 1. Implementar hipervinculos en cuadro de notas
 2. Implementar importasion de archivos *.ppm
 3. Implementar que la tarea padre sea la superoposicion de las subtareas
+4. Implementar dias de esepsion
 4. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
 5. El scroll debe poder fuecionar sobre el diagrama de Gantt
 6. Implementar rodar tarea

@@ -39,8 +39,8 @@ class MainWindow(QMainWindow):
 
         # Table to display tasks
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["Mode ID", "Task ID", "Level", "Task Name", "Start Date", "End Date", "Source File"])
+        self.table.setColumnCount(6)  # Removed one ID column
+        self.table.setHorizontalHeaderLabels(["Task ID", "Level", "Task Name", "Start Date", "End Date", "Source File"])
         main_layout.addWidget(self.table)
 
         # Set the central widget
@@ -62,51 +62,104 @@ class MainWindow(QMainWindow):
     def extract_tasks(self, file_path):
         self.tasks = []
         self.task_tree = []
+        
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
+                # Extract text and tables
                 text = page.extract_text()
+                tables = page.extract_tables()
+                
+                # Process each line of text
                 lines = text.split('\n')
                 for line in lines:
-                    # This regex pattern now captures both ID numbers
-                    match = re.match(r'(\d+)\s+(\d+)\s+(.*?)\s+(\d+\s+días)\s+(\d{1,2}/\d{1,2}/\d{4})\s+(\d{1,2}/\d{1,2}/\d{4})', line)
+                    # Try different patterns to find task information
+                    # Pattern 1: Look for ID at the start
+                    match = re.match(r'(\d+)\s+(.*?)\s+(\d+\s*(?:días|days))?\s*(\d{1,2}/\d{1,2}/\d{4})\s+(\d{1,2}/\d{1,2}/\d{4})', line)
+                    if not match:
+                        # Pattern 2: Look for ID after task name
+                        match = re.match(r'(.*?)\s+(\d+)\s+(\d+\s*(?:días|days))?\s*(\d{1,2}/\d{1,2}/\d{4})\s+(\d{1,2}/\d{1,2}/\d{4})', line)
+                    
                     if match:
-                        mode_id, task_id, task_name, _, start_date, end_date = match.groups()
-                        indentation = len(line) - len(line.lstrip())
-                        level = indentation // 8  # Assuming 8 spaces per indentation level
+                        # Extract components based on which pattern matched
+                        if len(match.groups()) == 5:
+                            if match.group(1).isdigit():
+                                # Pattern 1 matched
+                                task_id = match.group(1)
+                                task_name = match.group(2).strip()
+                                start_date = match.group(4)
+                                end_date = match.group(5)
+                            else:
+                                # Pattern 2 matched
+                                task_name = match.group(1).strip()
+                                task_id = match.group(2)
+                                start_date = match.group(4)
+                                end_date = match.group(5)
+
+                        # Calculate indentation level
+                        # First try to get visual indentation from the PDF
+                        try:
+                            chars = page.extract_words()
+                            for char in chars:
+                                if task_name in char.get('text', ''):
+                                    x0 = char['x0']
+                                    # Convert x0 position to indentation level (assuming 20 units per level)
+                                    level = int(x0 / 20)
+                                    break
+                            else:
+                                level = 0
+                        except:
+                            # If visual indentation fails, try to determine by leading spaces
+                            leading_spaces = len(line) - len(line.lstrip())
+                            level = leading_spaces // 4  # Assuming 4 spaces per indentation level
+                            if level > 10:  # Sanity check
+                                level = 0
+
                         task = {
-                            'mode_id': mode_id,
                             'task_id': task_id,
                             'level': level,
                             'name': task_name,
                             'start_date': start_date,
                             'end_date': end_date,
-                            'indentation': indentation
+                            'indentation': level
                         }
+                        
                         self.tasks.append(task)
                         self.task_tree.append(TaskTreeNode(task))
 
-        # Creamos la jerarquía de tareas
+        # Build task hierarchy
         for i in range(len(self.task_tree)):
             node = self.task_tree[i]
             if i > 0:
-                prev_node = self.task_tree[i-1]
-                if node.task['level'] > prev_node.task['level']:
-                    prev_node.children.append(node)
+                # Look for the nearest parent (task with lower level)
+                for j in range(i-1, -1, -1):
+                    potential_parent = self.task_tree[j]
+                    if potential_parent.task['level'] < node.task['level']:
+                        potential_parent.children.append(node)
+                        break
 
     def populate_table(self):
         self.table.setRowCount(len(self.tasks))
         for row, task in enumerate(self.tasks):
-            self.table.setItem(row, 0, QTableWidgetItem(task['mode_id']))
-            self.table.setItem(row, 1, QTableWidgetItem(task['task_id']))
-            self.table.setItem(row, 2, QTableWidgetItem(str(task['level'])))
+            self.table.setItem(row, 0, QTableWidgetItem(task['task_id']))
+            self.table.setItem(row, 1, QTableWidgetItem(str(task['level'])))
+            
+            # Format task name with indentation and parent information
+            task_name = task['name']
             if task['level'] > 0:
-                parent_task = self.task_tree[row-1].task
-                self.table.setItem(row, 3, QTableWidgetItem(f"{parent_task['name']} -> {task['name']}"))
-            else:
-                self.table.setItem(row, 3, QTableWidgetItem('  ' * task['level'] + task['name']))
-            self.table.setItem(row, 4, QTableWidgetItem(task['start_date']))
-            self.table.setItem(row, 5, QTableWidgetItem(task['end_date']))
-            self.table.setItem(row, 6, QTableWidgetItem(self.source_file))
+                # Find parent task
+                parent_found = False
+                for i in range(row-1, -1, -1):
+                    if self.tasks[i]['level'] < task['level']:
+                        parent_task = self.tasks[i]
+                        task_name = f"{parent_task['name']} -> {task_name}"
+                        parent_found = True
+                        break
+            
+            self.table.setItem(row, 2, QTableWidgetItem('  ' * task['level'] + task_name))
+            self.table.setItem(row, 3, QTableWidgetItem(task['start_date']))
+            self.table.setItem(row, 4, QTableWidgetItem(task['end_date']))
+            self.table.setItem(row, 5, QTableWidgetItem(self.source_file))
+            
         self.table.resizeColumnsToContents()
         self.update_task_counter()
 
@@ -119,9 +172,8 @@ class MainWindow(QMainWindow):
 
         visible_tasks = 0
         for row in range(self.table.rowCount()):
-            task_name = self.normalize_string(self.table.item(row, 3).text())
+            task_name = self.normalize_string(self.table.item(row, 2).text())
 
-            # If all search terms are in the task name (regardless of order), show the row
             if all(term in task_name for term in search_terms):
                 self.table.setRowHidden(row, False)
                 visible_tasks += 1
