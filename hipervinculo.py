@@ -1,7 +1,8 @@
-# conectado con baby 4
+# conectado con baby 7
 import os
 import sys
 import subprocess
+from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton,
     QTextEdit, QFileDialog, QMessageBox
@@ -19,8 +20,8 @@ class HyperlinkTextEdit(QTextEdit):
         self.normal_format = QTextCharFormat()
         self.file_links = {}
         self.update_colors()
-        # Eliminamos la conexión a contentsChanged
-        # self.document().contentsChanged.connect(self.update_text_formats)
+        self.setMouseTracking(True)  # Habilitar seguimiento del mouse
+        self.last_cursor = None  # Para rastrear el último cursor usado
 
     def update_colors(self):
         palette = self.palette()
@@ -74,6 +75,34 @@ class HyperlinkTextEdit(QTextEdit):
         line = cursor.selectedText().strip()
         self.doubleClicked.emit(line)
 
+    def mouseMoveEvent(self, e):
+        # Obtener el cursor en la posición actual del mouse
+        cursor = self.cursorForPosition(e.pos())
+        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+        line = cursor.selectedText().strip()
+
+        # Verificar si la línea actual es un hipervínculo
+        if line in self.file_links:
+            if self.viewport().cursor().shape() != Qt.CursorShape.PointingHandCursor:
+                self.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+                self.last_cursor = Qt.CursorShape.PointingHandCursor
+
+            # Mostrar tooltip con la ruta del archivo
+            file_path = self.file_links[line]
+            self.setToolTip(f"Abrir: {file_path}")
+        else:
+            if self.viewport().cursor().shape() != Qt.CursorShape.IBeamCursor:
+                self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
+                self.last_cursor = Qt.CursorShape.IBeamCursor
+            self.setToolTip("")  # Eliminar el tooltip cuando no está sobre un hipervínculo
+
+        super().mouseMoveEvent(e)
+
+    def leaveEvent(self, event):
+        self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
+        self.last_cursor = Qt.CursorShape.IBeamCursor
+        super().leaveEvent(event)
+
     def insertHyperlink(self, text):
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
@@ -112,28 +141,41 @@ class NotesApp(QMainWindow):
         layout.addWidget(open_button)
 
     def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar archivo")
-        if file_path:
-            file_name = os.path.basename(file_path)
-            self.file_links[file_name] = file_path
-            self.note_box.file_links[file_name] = file_path
-            self.note_box.insertHyperlink(file_name)
-            self.note_box.setFocus()
+        try:
+            options = QFileDialog.Options()
+            options |= QFileDialog.Option.DontUseNativeDialog
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Seleccionar archivo",
+                "",
+                "Todos los archivos (*.*)",
+                options=options
+            )
+            if file_path:
+                file_path = os.path.normpath(file_path)  # Normalizar ruta
+                file_name = os.path.basename(file_path)
+                self.file_links[file_name] = file_path
+                self.note_box.file_links[file_name] = file_path
+                self.note_box.insertHyperlink(file_name)
+                self.note_box.setFocus()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error al seleccionar archivo: {str(e)}")
 
     def open_hyperlink(self, line):
-        file_path = self.note_box.file_links.get(line)
-        if file_path and os.path.exists(file_path):
-            try:
-                if sys.platform.startswith('darwin'):
-                    subprocess.call(('open', file_path))
-                elif sys.platform.startswith('win32'):
-                    os.startfile(file_path)
+        try:
+            file_path = self.note_box.file_links.get(line)
+            if file_path and os.path.exists(file_path):
+                file_path = os.path.normpath(file_path)  # Normalizar ruta
+                if sys.platform.startswith('win32'):
+                    os.startfile(os.path.normpath(file_path))
+                elif sys.platform.startswith('darwin'):
+                    subprocess.run(['open', file_path], check=True)
                 else:
-                    subprocess.call(('xdg-open', file_path))
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
-        else:
-            QMessageBox.warning(self, "Error", "No se pudo abrir el archivo.")
+                    subprocess.run(['xdg-open', file_path], check=True)
+            else:
+                QMessageBox.warning(self, "Error", "No se pudo encontrar el archivo.")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

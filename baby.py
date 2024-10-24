@@ -1,10 +1,11 @@
-# Hipervinculos en notas 8
+# Hipervinculos en notas 10
 import os
 import sys
+import subprocess
+from pathlib import Path
 import inspect
 import math
 import ast
-import subprocess
 from datetime import timedelta, datetime
 from workalendar.america import Colombia
 from PySide6.QtWidgets import (
@@ -1101,26 +1102,40 @@ class FloatingTaskMenu(QWidget):
             super().keyPressEvent(event)
 
     def open_file_dialog_for_link(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar archivo")
-        if file_path:
-            file_name = os.path.basename(file_path)
-            self.notes_edit.insertHyperlink(file_name)
-            self.notes_edit.file_links[file_name] = file_path
+        try:
+            options = QFileDialog.Options()
+            options |= QFileDialog.Option.DontUseNativeDialog  # Usar diálogo Qt en lugar del nativo
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Seleccionar archivo",
+                "",
+                "Todos los archivos (*.*)",
+                options=options
+            )
+            if file_path:
+                # Convertir a ruta normalizada del sistema
+                file_path = os.path.normpath(file_path)
+                file_name = os.path.basename(file_path)
+                self.notes_edit.file_links[file_name] = file_path
+                self.notes_edit.insertHyperlink(file_name)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error al seleccionar archivo: {str(e)}")
 
     def open_hyperlink(self, line):
-        file_path = self.notes_edit.file_links.get(line)
-        if file_path and os.path.exists(file_path):
-            try:
-                if sys.platform.startswith('darwin'):  # macOS
-                    subprocess.call(('open', file_path))
-                elif sys.platform.startswith('win32'):  # Windows
-                    os.startfile(file_path)
-                else:  # Linux y otros sistemas Unix
-                    subprocess.call(('xdg-open', file_path))
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
-        else:
-            QMessageBox.warning(self, "Error", "No se pudo abrir el archivo.")
+        try:
+            file_path = self.notes_edit.file_links.get(line)
+            if file_path and os.path.exists(file_path):
+                file_path = os.path.normpath(file_path)  # Normalizar ruta
+                if sys.platform.startswith('win32'):
+                    os.startfile(os.path.normpath(file_path))
+                elif sys.platform.startswith('darwin'):
+                    subprocess.run(['open', file_path], check=True)
+                else:
+                    subprocess.run(['xdg-open', file_path], check=True)
+            else:
+                QMessageBox.warning(self, "Error", "No se pudo encontrar el archivo.")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
 
     def show_notes_context_menu(self, position):
         menu = QMenu(self)
