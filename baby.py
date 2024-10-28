@@ -1,4 +1,4 @@
-# Hipervinculos en notas 10
+# Hipervinculos en notas 11
 import os
 import sys
 import subprocess
@@ -1016,13 +1016,17 @@ class FloatingTaskMenu(QWidget):
             layout.addWidget(label)
 
         self.notes_edit = HyperlinkTextEdit(self)
-        self.notes_edit.setHtml(self.task.notes_html)
+
+        # Validación añadida
+        if isinstance(self.task.notes_html, str):
+            self.notes_edit.setHtml(self.task.notes_html)
+        else:
+            print(f"Error: notes_html debe ser una cadena, pero es {type(self.task.notes_html)}. Asignando cadena vacía.")
+            self.notes_edit.setHtml("")
+
         self.notes_edit.file_links = self.task.file_links
         self.notes_edit.setMinimumHeight(100)
         layout.addWidget(self.notes_edit)
-
-        self.notes_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.notes_edit.customContextMenuRequested.connect(self.show_notes_context_menu)
 
         self.setMinimumWidth(250)
         self.setMaximumWidth(400)
@@ -1033,8 +1037,12 @@ class FloatingTaskMenu(QWidget):
 
         self.notes_edit.textChanged.connect(self.update_task_notes)
         self.notes_edit.doubleClicked.connect(self.open_hyperlink)
-
         self.is_editing = False
+
+        # Después de layout.addWidget(self.notes_edit), agregar:
+        add_link_button = QPushButton("Agregar Hipervínculo")
+        add_link_button.clicked.connect(self.open_file_dialog_for_link)
+        layout.addWidget(add_link_button)
 
     def calculate_working_days_left(self):
         today = datetime.now().date()
@@ -1084,7 +1092,7 @@ class FloatingTaskMenu(QWidget):
     def changeEvent(self, event):
         if event.type() == QEvent.Type.PaletteChange:
             self.update_colors()
-            for child in self.findChildren((QLabel, HyperlinkTextEdit)):
+            for child in self.findChildren(QLabel):
                 child.setPalette(self.palette())
             self.update()
         super().changeEvent(event)
@@ -1103,8 +1111,8 @@ class FloatingTaskMenu(QWidget):
 
     def open_file_dialog_for_link(self):
         try:
-            options = QFileDialog.Options()
-            options |= QFileDialog.Option.DontUseNativeDialog  # Usar diálogo Qt en lugar del nativo
+            print("Abriendo diálogo de selección de archivo")
+            options = QFileDialog.DontUseNativeDialog  # Usar diálogo Qt en lugar del nativo
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
                 "Seleccionar archivo",
@@ -1113,13 +1121,17 @@ class FloatingTaskMenu(QWidget):
                 options=options
             )
             if file_path:
+                print(f"Archivo seleccionado: {file_path}")
                 # Convertir a ruta normalizada del sistema
                 file_path = os.path.normpath(file_path)
                 file_name = os.path.basename(file_path)
                 self.notes_edit.file_links[file_name] = file_path
                 self.notes_edit.insertHyperlink(file_name)
+            else:
+                print("No se seleccionó ningún archivo")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Error al seleccionar archivo: {str(e)}")
+            print(f"Excepción en open_file_dialog_for_link: {e}")
 
     def open_hyperlink(self, line):
         try:
@@ -1127,7 +1139,7 @@ class FloatingTaskMenu(QWidget):
             if file_path and os.path.exists(file_path):
                 file_path = os.path.normpath(file_path)  # Normalizar ruta
                 if sys.platform.startswith('win32'):
-                    os.startfile(os.path.normpath(file_path))
+                    os.startfile(file_path)  # Cambiado a file_path directamente
                 elif sys.platform.startswith('darwin'):
                     subprocess.run(['open', file_path], check=True)
                 else:
@@ -1136,14 +1148,6 @@ class FloatingTaskMenu(QWidget):
                 QMessageBox.warning(self, "Error", "No se pudo encontrar el archivo.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
-
-    def show_notes_context_menu(self, position):
-        menu = QMenu(self)
-        add_link_action = menu.addAction("Agregar Hipervínculo")
-
-        action = menu.exec(self.notes_edit.mapToGlobal(position))
-        if action == add_link_action:
-            self.open_file_dialog_for_link()
 
 class TaskTableWidget(QWidget):
     taskDataChanged = Signal()
@@ -1451,6 +1455,10 @@ class TaskTableWidget(QWidget):
                                 reading_notes = False
                                 task_data['NOTES_HTML'] = notes_html
                             elif line == "FILE_LINKS_BEGIN":
+                                if reading_notes:
+                                    # Si 'NOTES_HTML_END' falta, cerramos la sección de notas aquí
+                                    reading_notes = False
+                                    task_data['NOTES_HTML'] = notes_html
                                 reading_links = True
                                 file_links_str = ""
                             elif line == "FILE_LINKS_END":
@@ -1472,6 +1480,11 @@ class TaskTableWidget(QWidget):
                             notes_html=task_data.get('NOTES_HTML', ""),
                             file_links=task_data.get('FILE_LINKS', {})
                         )
+                        # Asegurarse de que 'NOTES_HTML' siempre sea una cadena
+                        if not isinstance(task_data['NOTES_HTML'], str):
+                            print(f"Advertencia: 'NOTES_HTML' para la tarea '{task_data.get('NAME', 'Unnamed')}' no es una cadena. Asignando cadena vacía.")
+                            task_data['NOTES_HTML'] = ""
+
                         parent_name = task_data.get('PARENT', '').strip()
                         task.is_subtask = bool(parent_name)
                         task.is_collapsed = task_data.get('COLLAPSED', 'False') == 'True'
@@ -1499,14 +1512,15 @@ class TaskTableWidget(QWidget):
 
     def add_task_to_table(self, task_data, editable=False):
         task = Task(
-            task_data.get('NAME', "Nueva Tarea"),
-            task_data.get('START', QDate.currentDate().toString("dd/MM/yyyy")),
-            task_data.get('END', QDate.currentDate().addDays(1).toString("dd/MM/yyyy")),
-            task_data.get('DURATION', "1"),
-            task_data.get('DEDICATION', "40"),
-            QColor(task_data.get('COLOR', '#22a39f')),
-            task_data.get('NOTES_HTML', ""),
-            task_data.get('FILE_LINKS', {})
+            name=task_data.get('NAME', "Nueva Tarea"),
+            start_date=task_data.get('START', QDate.currentDate().toString("dd/MM/yyyy")),
+            end_date=task_data.get('END', QDate.currentDate().addDays(1).toString("dd/MM/yyyy")),
+            duration=task_data.get('DURATION', "1"),
+            dedication=task_data.get('DEDICATION', "40"),
+            color=QColor(task_data.get('COLOR', '#22a39f')),
+            notes=task_data.get('NOTES', ""),
+            notes_html=task_data.get('NOTES_HTML', ""),
+            file_links=task_data.get('FILE_LINKS', {})
         )
         task.is_editing = editable  # Establecer is_editing según el parámetro editable
         task.is_collapsed = False  # Inicializar is_collapsed
@@ -1888,13 +1902,15 @@ class MainWindow(QMainWindow):
                         'NOTES': task.notes
                     }
                     duplicated_task = Task(
-                        task_data.get('NAME'),
-                        task_data.get('START'),
-                        task_data.get('END'),
-                        task_data.get('DURATION'),
-                        task_data.get('DEDICATION'),
-                        QColor(task_data.get('COLOR')),
-                        task_data.get('NOTES', '')
+                        name=task_data.get('NAME'),
+                        start_date=task_data.get('START'),
+                        end_date=task_data.get('END'),
+                        duration=task_data.get('DURATION'),
+                        dedication=task_data.get('DEDICATION'),
+                        color=QColor(task_data.get('COLOR')),
+                        notes=task_data.get('NOTES', ''),
+                        notes_html="",  # Si es necesario, ajustar este valor
+                        file_links={}   # Si es necesario, ajustar este valor
                     )
                     duplicated_task.is_subtask = task.is_subtask
                     duplicated_task.parent_task = task.parent_task
@@ -1926,13 +1942,15 @@ class MainWindow(QMainWindow):
                                     'NOTES': subtask.notes
                                 }
                                 duplicated_subtask = Task(
-                                    subtask_data.get('NAME'),
-                                    subtask_data.get('START'),
-                                    subtask_data.get('END'),
-                                    subtask_data.get('DURATION'),
-                                    subtask_data.get('DEDICATION'),
-                                    QColor(subtask_data.get('COLOR')),
-                                    subtask_data.get('NOTES', '')
+                                    name=subtask_data.get('NAME'),
+                                    start_date=subtask_data.get('START'),
+                                    end_date=subtask_data.get('END'),
+                                    duration=subtask_data.get('DURATION'),
+                                    dedication=subtask_data.get('DEDICATION'),
+                                    color=QColor(subtask_data.get('COLOR')),
+                                    notes=subtask_data.get('NOTES', ''),
+                                    notes_html="",  # Si es necesario, ajustar este valor
+                                    file_links={}   # Si es necesario, ajustar este valor
                                 )
                                 duplicated_subtask.is_subtask = True
                                 duplicated_subtask.parent_task = duplicated_task
@@ -2011,13 +2029,13 @@ class MainWindow(QMainWindow):
             'NOTES': ""
         }
         new_task = Task(
-            task_data.get('NAME'),
-            task_data.get('START'),
-            task_data.get('END'),
-            task_data.get('DURATION'),
-            task_data.get('DEDICATION'),
-            QColor(task_data.get('COLOR')),
-            task_data.get('NOTES', '')
+            name=task_data.get('NAME'),
+            start_date=task_data.get('START'),
+            end_date=task_data.get('END'),
+            duration=task_data.get('DURATION'),
+            dedication=task_data.get('DEDICATION'),
+            color=QColor(task_data.get('COLOR')),
+            notes=task_data.get('NOTES', '')
         )
         new_task.is_editing = False
         new_task.is_collapsed = False

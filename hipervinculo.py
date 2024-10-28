@@ -1,4 +1,4 @@
-# conectado con baby 7
+# conectado con baby 9
 import os
 import sys
 import subprocess
@@ -22,6 +22,8 @@ class HyperlinkTextEdit(QTextEdit):
         self.update_colors()
         self.setMouseTracking(True)  # Habilitar seguimiento del mouse
         self.last_cursor = None  # Para rastrear el último cursor usado
+        # Cambia la política de contexto a DefaultContextMenu
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
 
     def update_colors(self):
         palette = self.palette()
@@ -48,10 +50,10 @@ class HyperlinkTextEdit(QTextEdit):
         self.normal_format.setFontItalic(False)
         self.update_existing_text_formats()  # Actualizar formatos existentes
 
-    def changeEvent(self, event):
-        if event.type() == QEvent.Type.PaletteChange:
+    def changeEvent(self, e):
+        if e.type() == QEvent.Type.PaletteChange:
             self.update_colors()
-        super().changeEvent(event)
+        super().changeEvent(e)
 
     def update_existing_text_formats(self):
         # Evitar recursión bloqueando señales
@@ -142,8 +144,8 @@ class NotesApp(QMainWindow):
 
     def open_file(self):
         try:
-            options = QFileDialog.Options()
-            options |= QFileDialog.Option.DontUseNativeDialog
+            # Uso correcto de las opciones
+            options = QFileDialog.Option.DontUseNativeDialog
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
                 "Seleccionar archivo",
@@ -166,8 +168,8 @@ class NotesApp(QMainWindow):
             file_path = self.note_box.file_links.get(line)
             if file_path and os.path.exists(file_path):
                 file_path = os.path.normpath(file_path)  # Normalizar ruta
-                if sys.platform.startswith('win32'):
-                    os.startfile(os.path.normpath(file_path))
+                if sys.platform.startswith('win32') and hasattr(os, 'startfile'):
+                    os.startfile(file_path)
                 elif sys.platform.startswith('darwin'):
                     subprocess.run(['open', file_path], check=True)
                 else:
