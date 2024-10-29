@@ -1,0 +1,689 @@
+[TASK]
+NAME: Vacaciones Periodo 2
+PARENT:
+START: 15/10/2024
+END: 22/10/2024
+DURATION: 6
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><meta charset="utf-8" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }
+</style></head><body style=" font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;">
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p></body></html>
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{'Plantilla - Diagramas de Principio SE Digitales 110kV.msg': 'D:\\6. Estandarizacion\\Plantilla - Diagramas de Principio SE Digitales 110kV.msg'}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Ing Basica
+PARENT:
+START: 16/09/2024
+END: 31/10/2024
+DURATION: 33
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: True
+NOTES_HTML_BEGIN
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><meta charset="utf-8" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }
+</style></head><body style=" font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">7. Rivisar entradass y salidas controlador movil para control AVR</span></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">6. Seguimento Rele biestable</span></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">1. Definir control del trafo Zigzag<br />2. Las lineas Enka y Carlos Lleras son fronteras<br />3. En las cantidades solicitar AVR para T2<br />4. Tablero de modida adicional para frontera comercial </span></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">5. Difiniciones alcance formulacion:</span></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">33GIRARDOTA</span></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-style:italic; text-decoration: underline; color:#55aaff;">SACOA3- Cronograma 20230224.pdf</span></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p></body></html>
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{'Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg': 'D:\\1. Proyectos\\10._Girardota\\5. Insumos\\3. Correos\\Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg', 'EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_PV.pdf': 'D:\\1. Proyectos\\10._Girardota\\5. Insumos\\EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_PV.pdf', 'SACOA3- Cronograma 20230224.pdf': 'D:\\1. Proyectos\\SACOA3- Cronograma 20230224.pdf'}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Provisional T1
+PARENT:
+START: 01/11/2024
+END: 19/12/2024
+DURATION: 33
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: True
+NOTES_HTML_BEGIN
+1. Se implementa diferencial de barras provisional 110 kV. El IED sera el que se encuentra en SE Cordova.<br>
+2. Se debe implementar diferencial de barras provisional para 13.2 kV para la bahia movil de 13.2 kV<br>
+3. Verificar si se requiere diferenceal de barras para 44 kV
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Malena Actualizar Ing Basica
+PARENT:
+START: 02/01/2025
+END: 24/01/2025
+DURATION: 16
+DEDICATION: 40
+COLOR: #22a39f
+COLLAPSED: True
+NOTES_HTML_BEGIN
+1. Actualizar diagrama unifilar, cambio de CTs de celdas de 13.2 kV<br>
+2. Actualizar diagrama de principio y cantidades (Se debe hacer completo)
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Cordova Planos As Built
+PARENT:
+START: 27/01/2025
+END: 28/03/2025
+DURATION: 44
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+Actualizar Ing Basica<br>
+Hacer manual de operacion
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Guarne Provisionales
+PARENT:
+START: 17/02/2025
+END: 21/04/2025
+DURATION: 43
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada SM
+PARENT:
+START: 04/04/2025
+END: 22/05/2025
+DURATION: 32
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+1. Se envio correo con temas por definir
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada SM
+PARENT:
+START: 04/04/2025
+END: 31/07/2025
+DURATION: 79
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada T2
+PARENT:
+START: 01/08/2025
+END: 28/10/2025
+DURATION: 60
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada Bahia Lines 220
+PARENT:
+START: 23/05/2025
+END: 31/10/2025
+DURATION: 110
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Malena Detallada
+PARENT:
+START: 28/01/2025
+END: 03/12/2025
+DURATION: 210
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada T3
+PARENT:
+START: 29/10/2025
+END: 16/01/2026
+DURATION: 52
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Etapa 1
+PARENT:
+START: 31/07/2025
+END: 29/01/2026
+DURATION: 122
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Provisionales 44
+PARENT:
+START: 30/01/2026
+END: 17/03/2026
+DURATION: 33
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Etapa 1 EXTR
+PARENT:
+START: 18/03/2026
+END: 27/05/2026
+DURATION: 46
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Guarne Detallada 110
+PARENT:
+START: 22/01/2026
+END: 10/07/2026
+DURATION: 114
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: True
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Guarne Detallada integracion Conexion al STN
+PARENT:
+START: 04/06/2026
+END: 11/08/2026
+DURATION: 44
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: True
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Guarne Detallada 44
+PARENT:
+START: 10/07/2026
+END: 29/08/2026
+DURATION: 33
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Etapa 2
+PARENT:
+START: 26/05/2026
+END: 02/09/2026
+DURATION: 66
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Etapa 2 EXTR
+PARENT:
+START: 03/09/2026
+END: 02/10/2026
+DURATION: 22
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada Bahia Lines 110
+PARENT:
+START: 20/08/2026
+END: 10/12/2026
+DURATION: 77
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Detallada Bahia Lines 44
+PARENT:
+START: 11/12/2026
+END: 12/04/2027
+DURATION: 81
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota Etapa 3
+PARENT:
+START: 05/10/2026
+END: 05/10/2027
+DURATION: 246
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Oriente Provisionales 44, 110 y 220
+PARENT:
+START: 19/05/2027
+END: 02/08/2028
+DURATION: 297
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota As Built E1
+PARENT:
+START: 27/09/2028
+END: 18/12/2028
+DURATION: 55
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota As Built E2
+PARENT:
+START: 22/10/2029
+END: 22/11/2030
+DURATION: 268
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
+[TASK]
+NAME: Girardota As Built E3
+PARENT:
+START: 06/03/2031
+END: 24/04/2031
+DURATION: 33
+DEDICATION: 100
+COLOR: #22a39f
+COLLAPSED: False
+NOTES_HTML_BEGIN
+
+
+
+
+
+
+
+
+
+NOTES_HTML_END
+FILE_LINKS_BEGIN
+{}
+FILE_LINKS_END
+[/TASK]
+
