@@ -1,4 +1,3 @@
-# conectado con baby 9
 import os
 import sys
 import subprocess
@@ -7,7 +6,10 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton,
     QTextEdit, QFileDialog, QMessageBox
 )
-from PySide6.QtGui import QFont, QColor, QPalette, QTextCursor, QTextCharFormat
+from PySide6.QtGui import (
+    QFont, QColor, QPalette, QTextCursor, QTextCharFormat,
+    QTextBlockFormat, QTextOption
+)
 from PySide6.QtCore import Qt, Signal, QEvent
 
 class HyperlinkTextEdit(QTextEdit):
@@ -19,10 +21,12 @@ class HyperlinkTextEdit(QTextEdit):
         self.hyperlink_format = QTextCharFormat()
         self.normal_format = QTextCharFormat()
         self.file_links = {}
+        # Configurar el ajuste de línea usando la constante correcta
+        self.setWordWrapMode(QTextOption.WordWrap)  # Cambiado a usar WordWrap
+        self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.update_colors()
-        self.setMouseTracking(True)  # Habilitar seguimiento del mouse
-        self.last_cursor = None  # Para rastrear el último cursor usado
-        # Cambia la política de contexto a DefaultContextMenu
+        self.setMouseTracking(True)
+        self.last_cursor = None
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
 
     def update_colors(self):
@@ -30,16 +34,13 @@ class HyperlinkTextEdit(QTextEdit):
         text_color = palette.color(QPalette.ColorRole.Text)
         link_color = palette.color(QPalette.ColorRole.Link)
 
-        # Determinar si el fondo es oscuro o claro
         bg_color = palette.color(QPalette.ColorRole.Base)
         luminance = 0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue()
         is_dark = luminance < 128  # Umbral para determinar si es oscuro
 
         if is_dark:
-            # Elegir un color de enlace más brillante para fondos oscuros
             link_color = QColor(85, 170, 255)  # Azul claro
         else:
-            # Usar el color de enlace del sistema para fondos claros
             link_color = palette.color(QPalette.ColorRole.Link)
 
         self.hyperlink_format.setForeground(link_color)
@@ -48,7 +49,7 @@ class HyperlinkTextEdit(QTextEdit):
         self.normal_format.setForeground(text_color)
         self.normal_format.setFontUnderline(False)
         self.normal_format.setFontItalic(False)
-        self.update_existing_text_formats()  # Actualizar formatos existentes
+        self.update_existing_text_formats()
 
     def changeEvent(self, e):
         if e.type() == QEvent.Type.PaletteChange:
@@ -56,47 +57,71 @@ class HyperlinkTextEdit(QTextEdit):
         super().changeEvent(e)
 
     def update_existing_text_formats(self):
-        # Evitar recursión bloqueando señales
         self.document().blockSignals(True)
         cursor = QTextCursor(self.document())
         cursor.movePosition(QTextCursor.MoveOperation.Start)
         while not cursor.atEnd():
-            cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
-            line_text = cursor.selectedText()
-            if line_text.strip() in self.file_links:
-                cursor.setCharFormat(self.hyperlink_format)
-            else:
+            block = cursor.block()
+            block_text = block.text().strip()
+
+            format_applied = False
+            for link in self.file_links.keys():
+                if link in block_text:
+                    start = block_text.index(link)
+                    cursor.setPosition(block.position() + start)
+                    cursor.setPosition(block.position() + start + len(link),
+                                    QTextCursor.MoveMode.KeepAnchor)
+                    cursor.setCharFormat(self.hyperlink_format)
+                    format_applied = True
+                    break
+
+            if not format_applied:
+                cursor.setPosition(block.position())
+                cursor.setPosition(block.position() + block.length() - 1,
+                                QTextCursor.MoveMode.KeepAnchor)
                 cursor.setCharFormat(self.normal_format)
-            cursor.clearSelection()
+
             cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+
         self.document().blockSignals(False)
 
     def mouseDoubleClickEvent(self, e):
         cursor = self.cursorForPosition(e.pos())
-        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-        line = cursor.selectedText().strip()
-        self.doubleClicked.emit(line)
+        block = cursor.block()
+        block_text = block.text().strip()
+
+        for link in self.file_links.keys():
+            if link in block_text:
+                self.doubleClicked.emit(link)
+                return
+
+        super().mouseDoubleClickEvent(e)
 
     def mouseMoveEvent(self, e):
-        # Obtener el cursor en la posición actual del mouse
         cursor = self.cursorForPosition(e.pos())
-        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-        line = cursor.selectedText().strip()
+        block = cursor.block()
+        block_text = block.text().strip()
 
-        # Verificar si la línea actual es un hipervínculo
-        if line in self.file_links:
+        is_link = False
+        link_text = None
+        for link in self.file_links.keys():
+            if link in block_text:
+                is_link = True
+                link_text = link
+                break
+
+        if is_link:
             if self.viewport().cursor().shape() != Qt.CursorShape.PointingHandCursor:
                 self.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
                 self.last_cursor = Qt.CursorShape.PointingHandCursor
 
-            # Mostrar tooltip con la ruta del archivo
-            file_path = self.file_links[line]
+            file_path = self.file_links[link_text]
             self.setToolTip(f"Abrir: {file_path}")
         else:
             if self.viewport().cursor().shape() != Qt.CursorShape.IBeamCursor:
                 self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
                 self.last_cursor = Qt.CursorShape.IBeamCursor
-            self.setToolTip("")  # Eliminar el tooltip cuando no está sobre un hipervínculo
+            self.setToolTip("")
 
         super().mouseMoveEvent(e)
 
@@ -106,13 +131,23 @@ class HyperlinkTextEdit(QTextEdit):
         super().leaveEvent(event)
 
     def insertHyperlink(self, text):
+        # Usar el cursor actual en lugar de mover al final
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
+
+        # Configurar el formato del bloque para permitir ajuste de línea
+        block_format = QTextBlockFormat()
+        block_format.setLineHeight(200, 0)
+        block_format.setTextIndent(0)
+        block_format.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        cursor.setBlockFormat(block_format)
+
+        # Insertar el texto con el formato de hipervínculo
         cursor.insertText(text, self.hyperlink_format)
-        cursor.insertText("\n", self.normal_format)
+        cursor.insertBlock(block_format)
+
+        # Mantener el foco y el formato
         self.setTextCursor(cursor)
         self.setCurrentCharFormat(self.normal_format)
-        # Aplicar formato inmediatamente
         self.update_existing_text_formats()
 
     def keyPressEvent(self, e):

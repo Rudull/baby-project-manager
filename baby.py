@@ -1,4 +1,4 @@
-# Hipervinculos en notas 11
+# Hipervinculos en notas OK
 import os
 import sys
 import subprocess
@@ -1315,9 +1315,6 @@ class TaskTableWidget(QWidget):
         export_menu.addAction("XLSX")
 
         config_menu = menu.addMenu("Configuración")
-        appearance_menu = config_menu.addMenu("Apariencia")
-        appearance_menu.addAction("Modo claro")
-        appearance_menu.addAction("Modo oscuro")
         language_menu = config_menu.addMenu("Idioma")
         language_menu.addAction("Español")
         language_menu.addAction("Inglés")
