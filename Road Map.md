@@ -1,7 +1,6 @@
 ## Road Map
 
 1. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
-2. Los hipervinculos se estan agregando al final del listado de tareas. Deben agregarse en la posicion actual del cursor.
 3. Implementar importasion de archivos .pdf, .xlsx y *.ppm
 4. Implementar que la tarea padre sea la superoposicion de las subtareas
 5. Implementar dias de escepsion
@@ -37,6 +36,59 @@ self.color = color or QColor(114, 171, 230)
 color = QColor(119, 33, 111)
 # O también
 color = QColor("#77216F")
+
+pip install --upgrade pip
+pip install pdfplumber PySide6
+pip install PySide6 workalendar
+
+Estructura de Archivos Propuesta:
+
+    main.py (Programa principal)
+    models.py (Contiene las clases Task y TaskTableModel)
+    delegates.py (Contiene las clases delegadas personalizadas)
+    gantt.py (Contiene las clases relacionadas con el diagrama de Gantt)
+    task_table_widget.py (Contiene la clase TaskTableWidget)
+    floating_menu.py (Contiene la clase FloatingTaskMenu)
+    hyperlink_text_edit.py (Contiene la clase HyperlinkTextEdit)
+    main_window.py
+
+
+    Analizando el código proporcionado, sugiero dividirlo en los siguientes módulos principales:
+
+    1. **Módulo de Modelos (models.py)**
+       - Clase Task (modelo de datos para tareas)
+       - Clase TaskTableModel (modelo para la tabla de tareas)
+
+    2. **Módulo de Delegados (delegates.py)**
+       - LineEditDelegate
+       - DateEditDelegate
+       - SpinBoxDelegate
+       - StateButtonDelegate
+
+    3. **Módulo de Vistas Gantt (gantt_views.py)**
+       - GanttHeaderView
+       - GanttChart
+       - FloatingTaskMenu
+       - GanttWidget
+
+    4. **Módulo de Vistas de Tabla (table_views.py)**
+       - TaskTableWidget
+
+    5. **Módulo de Ventana Principal (main_window.py)**
+       - MainWindow
+
+    6. **Módulo de Utilidades (utils.py)**
+       - Funciones helper para cálculos de fechas
+       - Funciones para manejo de archivos
+       - Constantes compartidas
+
+    7. **Módulo de Hipervínculos (hipervinculo.py)** - Ya existente
+       - HyperlinkTextEdit
+       - NotesApp
+
+    8. **Módulo Principal (main.py)**
+       - Punto de entrada de la aplicación
+       - Configuración inicial
 
 
 Implementar arrastrar y soltar tareas en un programa de administración de tareas con una interfaz gráfica en PySide6 es completamente factible. Esto se puede lograr sobreescribiendo ciertos métodos de eventos en las clases del widget correspondiente. A continuación, desglosaré los pasos para implementar esta funcionalidad en el código que compartiste:
@@ -108,4 +160,3 @@ Explicación de los cambios:
 mousePressEvent: Captura cuál fila se ha comenzado a arrastrar.
 mouseMoveEvent: Si se mantiene presionado el botón del ratón, se inicia el proceso de arrastre.
 dropEvent: Maneja la lógica para mover la tarea del índice de la fila arrastrada al índice de la fila donde se suelta.
-
