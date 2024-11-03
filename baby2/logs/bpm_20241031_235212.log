@@ -1,0 +1,19 @@
+2024-10-31 23:52:12,341 - __main__ - INFO - Iniciando Baby Project Manager
+2024-10-31 23:52:12,424 - __main__ - INFO - Tema detectado: oscuro
+2024-10-31 23:52:12,447 - __main__ - ERROR - Error fatal en la aplicación: 'TaskTableWidget' object has no attribute 'show_context_menu'
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main.py", line 155, in main
+    window = MainWindow()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 19, in __init__
+    self.setup_ui()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 55, in setup_ui
+    self.setup_task_table()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 77, in setup_task_table
+    self.task_table_widget = TaskTableWidget(self)
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/table_views.py", line 21, in __init__
+    self.setup_ui()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/table_views.py", line 32, in setup_ui
+    self.setup_model_view()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/table_views.py", line 54, in setup_model_view
+    self.table_view.customContextMenuRequested.connect(self.show_context_menu)
+AttributeError: 'TaskTableWidget' object has no attribute 'show_context_menu'

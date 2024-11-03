@@ -15,7 +15,18 @@
 
 QTableWidget por QAbstractTableModel junto con QTableView
 
-Para el PDF compartido que corresponde a un cronograma. Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y están en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un número de letra más pequeño, no están en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta. Dime si existe una forma de relacionar las tareas padre con sus subtareas y representarlo en la tabla que genera la aplicación. ¿Qué se debe ajustar el aplicativo que te comparto para lograr identificar dicha relación entre tareas?
+PS E:\1. Rafael\3.Proyectos_de_Software\baby-project-manager> & C:/Users/raheb/AppData/Local/Microsoft/WindowsApps/python3.11.exe "e:/1. Rafael/3.Proyectos_de_Software/baby-project-manager/mpp_extractor.py"
+Error al iniciar la JVM: La variable JAVA_HOME no está configurada.
+Error al cargar el archivo: No module named 'net'
+Error calling Python override of QMainWindow::closeEvent(): Traceback (most recent call last):
+  File "e:\1. Rafael\3.Proyectos_de_Software\baby-project-manager\mpp_extractor.py", line 152, in closeEvent
+    jpype.shutdownJVM()
+  File "C:\Users\raheb\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\jpype\_core.py", line 367, in shutdownJVM
+    _jpype.shutdown(jpype.config.destroy_jvm, False)
+RuntimeError: Attempt to shutdown without a live JVM
+PS E:\1. Rafael\3.Proyectos_de_Software\baby-project-manager> 
+
+
 
 ↳
 
@@ -40,6 +51,8 @@ color = QColor("#77216F")
 pip install --upgrade pip
 pip install pdfplumber PySide6
 pip install PySide6 workalendar
+pip install mpxj
+pip install JPype1
 
 Estructura de Archivos Propuesta:
 

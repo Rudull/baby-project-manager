@@ -1,0 +1,19 @@
+2024-11-01 00:00:22,927 - __main__ - INFO - Iniciando Baby Project Manager
+2024-11-01 00:00:23,012 - __main__ - INFO - Tema detectado: oscuro
+2024-11-01 00:00:23,029 - __main__ - ERROR - Error fatal en la aplicación: name 'QEvent' is not defined
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main.py", line 155, in main
+    window = MainWindow()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 19, in __init__
+    self.setup_ui()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 56, in setup_ui
+    self.setup_gantt_widget()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 87, in setup_gantt_widget
+    self.gantt_widget = GanttWidget(self.tasks, self.ROW_HEIGHT, self)
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/gantt_views.py", line 514, in __init__
+    self.setup_ui()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/gantt_views.py", line 545, in setup_ui
+    self.content_layout.addWidget(self.header)
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/gantt_views.py", line 209, in changeEvent
+    if event.type() == QEvent.Type.PaletteChange:
+NameError: name 'QEvent' is not defined

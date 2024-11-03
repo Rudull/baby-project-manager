@@ -1,3 +1,6 @@
+#pdf_extractor.py
+#3
+
 import re
 import pdfplumber
 from PySide6.QtCore import QThread, Signal

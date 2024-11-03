@@ -1,13 +1,17 @@
 from datetime import datetime, timedelta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QTextEdit, QColorDialog, QSizePolicy, QFileDialog, QMessageBox
+    QTextEdit, QColorDialog, QSizePolicy, QFileDialog, QMessageBox,
+    QMenu
 )
 from PySide6.QtGui import (
     QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette,
-    QFontMetrics
+    QTextCursor, QTextCharFormat, QTextBlockFormat
 )
-from PySide6.QtCore import Qt, QDate, QRect, QRectF, Signal, QSize, QPoint
+from PySide6.QtCore import (
+    Qt, QDate, QRect, QRectF, Signal, QSize, QPoint, QEvent,
+    QTimer
+)
 from workalendar.america import Colombia
 from hipervinculo import HyperlinkTextEdit
 
@@ -219,10 +223,6 @@ class GanttChart(QWidget):
 
     def __init__(self, tasks, row_height, header_height, main_window):
         super().__init__()
-        self.initialize(tasks, row_height, header_height, main_window)
-
-    def initialize(self, tasks, row_height, header_height, main_window):
-        """Inicializa los atributos del diagrama de Gantt."""
         self.tasks = tasks
         self.row_height = row_height
         self.header_height = header_height
@@ -232,8 +232,8 @@ class GanttChart(QWidget):
         self.pixels_per_day = None
         self.floating_menu = None
         self.highlighted_task_index = None
-        self.wheel_accumulator = 0
         self.vertical_offset = 0
+        self.wheel_accumulator = 0
 
         self.setup_widget()
         self.update_colors()
@@ -254,6 +254,13 @@ class GanttChart(QWidget):
         self.text_color = palette.color(QPalette.ColorRole.Text)
         self.grid_color = palette.color(QPalette.ColorRole.Mid)
         self.today_line_color = QColor(242, 211, 136)
+
+    def update_parameters(self, min_date, max_date, pixels_per_day):
+        """Actualiza los parámetros de visualización del diagrama."""
+        self.min_date = min_date
+        self.max_date = max_date
+        self.pixels_per_day = pixels_per_day
+        self.update()
 
     def paintEvent(self, event):
         """Maneja el evento de pintado del diagrama."""
@@ -327,6 +334,53 @@ class GanttChart(QWidget):
             painter.setFont(QFont("Arial", 14))
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, welcome_text)
 
+    def get_task_at_position(self, point):
+        """
+        Determina qué tarea está en una posición determinada.
+
+        Args:
+            point: QPoint con la posición del mouse
+
+        Returns:
+            int: Índice de la tarea o None si no hay tarea en esa posición
+        """
+        y = point.y() + self.vertical_offset
+        task_index = int(y // self.row_height)
+        if 0 <= task_index < len(self.tasks):
+            return task_index
+        return None
+
+    def is_click_on_task_bar(self, point, task_index):
+        """
+        Determina si un clic fue sobre la barra de una tarea.
+
+        Args:
+            point: QPoint con la posición del clic
+            task_index: Índice de la tarea a verificar
+
+        Returns:
+            bool: True si el clic fue sobre la barra de la tarea
+        """
+        if 0 <= task_index < len(self.tasks):
+            task = self.tasks[task_index]
+            start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
+            end_date = QDate.fromString(task.end_date, "dd/MM/yyyy")
+
+            x = point.x()
+            y = point.y() + self.vertical_offset
+
+            task_start_x = self.min_date.daysTo(start_date) * self.pixels_per_day
+            task_end_x = self.min_date.daysTo(end_date) * self.pixels_per_day
+            task_y = task_index * self.row_height
+
+            # Añadir un pequeño margen para facilitar el clic
+            margin = 2
+
+            return (task_start_x - margin <= x <= task_end_x + margin and
+                    task_y <= y <= task_y + self.row_height)
+
+        return False
+
     def mousePressEvent(self, event):
         """Maneja el evento de presionar el botón del mouse."""
         if event.button() == Qt.MouseButton.LeftButton:
@@ -355,12 +409,21 @@ class GanttChart(QWidget):
         super().mouseMoveEvent(event)
 
     def show_color_dialog(self, task_index):
-        """Muestra el diálogo de selección de color."""
+        """Muestra el diálogo de selección de color para una tarea."""
         if 0 <= task_index < len(self.tasks):
             task = self.tasks[task_index]
             color = QColorDialog.getColor(initial=task.color, parent=self)
             if color.isValid():
                 self.colorChanged.emit(task_index, color)
+
+    def set_vertical_offset(self, offset):
+        """Establece el desplazamiento vertical del diagrama."""
+        self.vertical_offset = offset
+        self.update()
+
+    def get_vertical_offset(self):
+        """Obtiene el desplazamiento vertical actual."""
+        return self.vertical_offset
 
 class FloatingTaskMenu(QWidget):
     """Menú flotante para mostrar detalles de una tarea."""
@@ -521,12 +584,16 @@ class GanttWidget(QWidget):
         self.pixels_per_day = 0
         self.min_date = None
         self.max_date = None
+        self.vertical_offset = 0
+        self._layout = None
+        self.content_layout = None
 
     def setup_ui(self):
         """Configura la interfaz de usuario."""
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
+        self._layout = QVBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
+        self.setLayout(self._layout)
 
         # Crear y configurar el header
         self.header = GanttHeaderView()
@@ -545,7 +612,7 @@ class GanttWidget(QWidget):
         self.content_layout.addWidget(self.header)
         self.content_layout.addWidget(self.chart)
 
-        self.layout.addWidget(self.content_widget)
+        self._layout.addWidget(self.content_widget)
 
         # Configurar políticas de tamaño
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -555,9 +622,12 @@ class GanttWidget(QWidget):
         self.min_date = min_date
         self.max_date = max_date
         self.pixels_per_day = pixels_per_day
-        self.header.update_parameters(min_date, max_date, pixels_per_day)
-        self.chart.update_parameters(min_date, max_date, pixels_per_day)
-        self.content_widget.updateGeometry()
+        if hasattr(self, 'header'):
+            self.header.update_parameters(min_date, max_date, pixels_per_day)
+        if hasattr(self, 'chart'):
+            self.chart.update_parameters(min_date, max_date, pixels_per_day)
+        if hasattr(self, 'content_widget'):
+            self.content_widget.updateGeometry()
 
     def resizeEvent(self, event):
         """Maneja el evento de redimensionamiento."""
@@ -567,7 +637,8 @@ class GanttWidget(QWidget):
 
     def update_pixels_per_day(self):
         """Actualiza la escala de píxeles por día."""
-        days_total = self.min_date.daysTo(self.max_date) + 1
-        available_width = self.width()
-        self.pixels_per_day = max(0.1, available_width / days_total)
-        self.update_parameters(self.min_date, self.max_date, self.pixels_per_day)
+        if self.min_date and self.max_date:
+            days_total = self.min_date.daysTo(self.max_date) + 1
+            available_width = self.width()
+            self.pixels_per_day = max(0.1, available_width / days_total)
+            self.update_parameters(self.min_date, self.max_date, self.pixels_per_day)

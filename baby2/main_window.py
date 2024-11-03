@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QGridLayout, QMessageBox, 
-    QScrollBar, QSizePolicy, QFileDialog
+    QMainWindow, QWidget, QGridLayout, QMessageBox,
+    QScrollBar, QSizePolicy, QFileDialog, QVBoxLayout
 )
-from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtCore import Qt, QDate, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut, QWheelEvent
 
 from table_views import TaskTableWidget
@@ -10,7 +10,7 @@ from gantt_views import GanttWidget
 
 class MainWindow(QMainWindow):
     """Ventana principal de la aplicación."""
-    
+
     ROW_HEIGHT = 25
 
     def __init__(self):
@@ -42,12 +42,12 @@ class MainWindow(QMainWindow):
         main_layout = QGridLayout()
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Configurar factores de estiramiento
         main_layout.setColumnStretch(0, 0)  # TaskTableWidget (fijo)
         main_layout.setColumnStretch(1, 1)  # GanttWidget (expansible)
         main_layout.setColumnStretch(2, 0)  # Scrollbar (fijo)
-        
+
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
@@ -100,14 +100,15 @@ class MainWindow(QMainWindow):
 
     def setup_connections(self):
         """Configura las conexiones de señales."""
+        # Conexión del modelo
         self.model.layoutChanged.connect(self.on_model_layout_changed)
         self.table_view.verticalScrollBar().valueChanged.connect(self.on_table_scroll)
-        
-        # Configurar atajo de teclado para guardar
+
+        # Atajo para guardar
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.quick_save)
 
-        # Inicializar el scrollbar compartido
+        # Inicializar scrollbar
         QTimer.singleShot(0, self.initialize_shared_scrollbar)
 
     def initialize_shared_scrollbar(self):
@@ -119,11 +120,11 @@ class MainWindow(QMainWindow):
         total_tasks = self.model.rowCount()
         visible_tasks = self.calculate_visible_tasks()
         max_scroll = max(total_tasks - visible_tasks, 0)
-        
+
         self.shared_scrollbar.setRange(0, max_scroll)
         self.shared_scrollbar.setPageStep(visible_tasks)
         self.shared_scrollbar.setEnabled(total_tasks > visible_tasks)
-        
+
         if not self.shared_scrollbar.isEnabled():
             self.shared_scrollbar.setValue(0)
             self.gantt_chart.set_vertical_offset(0)
@@ -136,7 +137,7 @@ class MainWindow(QMainWindow):
     def sync_scroll(self, value):
         """Sincroniza el desplazamiento entre la tabla y el diagrama."""
         self.table_view.verticalScrollBar().setValue(value)
-        self.gantt_chart.set_vertical_offset(value * self.ROW_HEIGHT)
+        self.gantt_chart.set_vertical_offset(value)
 
     def on_table_scroll(self, value):
         """Maneja el evento de desplazamiento de la tabla."""
@@ -182,7 +183,7 @@ class MainWindow(QMainWindow):
         # Actualizar widgets
         self.gantt_widget.update_parameters(min_date, max_date, pixels_per_day)
         self.gantt_chart.setMinimumHeight(max(len(self.tasks) * self.ROW_HEIGHT, self.gantt_widget.height()))
-        
+
         if set_unsaved and self.tasks:
             self.set_unsaved_changes(True)
 
@@ -202,7 +203,7 @@ class MainWindow(QMainWindow):
         elif self.current_view == "year":
             min_date = today.addDays(-int(today.daysTo(today.addYears(1)) * 0.125))
             max_date = min_date.addYears(1)
-        
+
         return min_date, max_date
 
     def update_task_color(self, task_index, color):
@@ -239,7 +240,7 @@ class MainWindow(QMainWindow):
             'NOTES': ""
         }
         self.task_table_widget.add_task_to_table(task_data, editable=True)
-        
+
         # Seleccionar y editar la nueva tarea
         new_task_row = self.model.rowCount() - 1
         self.table_view.selectRow(new_task_row)
@@ -258,17 +259,17 @@ class MainWindow(QMainWindow):
                 self,
                 'Cambios sin guardar',
                 '¿Desea guardar los cambios antes de continuar?',
-                QMessageBox.StandardButton.Save | 
-                QMessageBox.StandardButton.Discard | 
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
                 QMessageBox.StandardButton.Cancel,
                 QMessageBox.StandardButton.Save
             )
-            
+
             if reply == QMessageBox.StandardButton.Save:
                 return self.task_table_widget.save_file()
             elif reply == QMessageBox.StandardButton.Cancel:
                 return False
-                
+
         return True
 
     def quick_save(self):
@@ -280,13 +281,13 @@ class MainWindow(QMainWindow):
         """Maneja el evento de la rueda del mouse."""
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
             self.wheel_accumulator += event.angleDelta().y()
-            
+
             if abs(self.wheel_accumulator) >= self.wheel_threshold:
                 if self.wheel_accumulator > 0:
                     self.zoom_in_view()
                 else:
                     self.zoom_out_view()
-                    
+
                 self.wheel_accumulator = 0
             event.accept()
         else:
@@ -329,12 +330,12 @@ class MainWindow(QMainWindow):
                 self,
                 'Cambios sin guardar',
                 '¿Desea guardar los cambios antes de salir?',
-                QMessageBox.StandardButton.Save | 
-                QMessageBox.StandardButton.Discard | 
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
                 QMessageBox.StandardButton.Cancel,
                 QMessageBox.StandardButton.Save
             )
-            
+
             if reply == QMessageBox.StandardButton.Save:
                 if self.task_table_widget.save_file():
                     event.accept()
@@ -356,7 +357,7 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
-        
+
         if secondary_reply == QMessageBox.StandardButton.Yes:
             event.accept()
         else:
@@ -377,3 +378,8 @@ class MainWindow(QMainWindow):
     def initial_layout_adjustment(self):
         """Realiza el ajuste inicial del diseño."""
         self.update_gantt_chart(set_unsaved=False)
+
+    def on_model_layout_changed(self):
+            """Maneja los cambios en el layout del modelo."""
+            self.update_gantt_chart()
+            self.set_unsaved_changes(True)
