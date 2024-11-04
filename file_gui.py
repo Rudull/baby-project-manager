@@ -1,15 +1,91 @@
 #file_gui.py
-#3
+#6
 import sys
+import os
+import platform
+import jpype
+from datetime import datetime
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton,
     QFileDialog, QTableWidget, QTableWidgetItem, QLineEdit, QLabel, QSizePolicy, QMessageBox
 )
-from PySide6.QtCore import Qt
-from pdf_extractor import PDFLoaderThread
+from PySide6.QtCore import Qt, QThread, Signal
+from pdf_extractor import PDFLoaderThread, TaskTreeNode
 from filter_util import normalize_string, is_start_end_task
 import re
 from loading_animation_widget import LoadingAnimationWidget
+
+class MPPLoaderThread(QThread):
+    tasks_extracted = Signal(list, list)
+
+    def __init__(self, file_path):
+        super().__init__()
+        self.file_path = file_path
+
+    def format_outline_number(self, task):
+        """Genera el número de esquema jerárquico para una tarea"""
+        outline_number = task.getOutlineNumber()
+        if outline_number is not None:
+            return str(outline_number)
+        return ''
+
+    def run(self):
+        try:
+            from mpp_extractor import ProjectManagerWindow
+            from filter_util import is_start_end_task
+
+            window = ProjectManagerWindow()
+
+            # Ya no iniciamos la JVM aquí
+
+            tasks = []
+            task_tree = []
+
+            from net.sf.mpxj.reader import UniversalProjectReader
+            reader = UniversalProjectReader()
+            project = reader.read(self.file_path)
+
+            for task in project.getTasks():
+                if task.getID() is None:
+                    continue
+
+                task_name = str(task.getName()) if task.getName() is not None else ''
+
+                if is_start_end_task(task_name) or (task.getDuration() is not None and task.getDuration().getDuration() == 0):
+                    continue
+
+                outline_number = self.format_outline_number(task)
+
+                task_dict = {
+                    'task_id': str(task.getID()),
+                    'level': outline_number,
+                    'name': task_name,
+                    'start_date': window.format_date(task.getStart()),
+                    'end_date': window.format_date(task.getFinish()),
+                    'indentation': task.getOutlineLevel() - 1,
+                    'outline_level': task.getOutlineLevel() - 1
+                }
+
+                tasks.append(task_dict)
+                task_tree.append(TaskTreeNode(task_dict))
+
+            # Construir jerarquía
+            for i in range(len(task_tree)):
+                node = task_tree[i]
+                if i > 0:
+                    for j in range(i - 1, -1, -1):
+                        potential_parent = task_tree[j]
+                        if potential_parent.task['outline_level'] < node.task['outline_level']:
+                            potential_parent.children.append(node)
+                            break
+
+            self.tasks_extracted.emit(tasks, task_tree)
+
+        except Exception as e:
+            print(f"Error al extraer tareas MPP: {e}")
+            import traceback
+            traceback.print_exc()
+            self.tasks_extracted.emit([], [])
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,17 +93,26 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Gantt Chart Extractor")
         self.setGeometry(100, 100, 1200, 600)
 
+        # Iniciar la JVM en el hilo principal
+        self.start_jvm()
+
         # Layout principal
         main_layout = QVBoxLayout()
 
-        # Layout horizontal para los botones
+        # Layout horizontal para botones
         button_layout = QHBoxLayout()
 
-        # Botón de carga de archivo
-        self.load_button = QPushButton("Cargar Archivo")
-        self.load_button.clicked.connect(self.load_file)
-        self.load_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        button_layout.addWidget(self.load_button)
+        # Botón para cargar archivo PDF
+        self.load_pdf_button = QPushButton("Cargar PDF")
+        self.load_pdf_button.clicked.connect(self.load_pdf_file)
+        self.load_pdf_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        button_layout.addWidget(self.load_pdf_button)
+
+        # Botón para cargar archivo MPP
+        self.load_mpp_button = QPushButton("Cargar MPP")
+        self.load_mpp_button.clicked.connect(self.load_mpp_file)
+        self.load_mpp_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        button_layout.addWidget(self.load_mpp_button)
 
         # Botón para guardar filtro
         self.save_filter_button = QPushButton("Guardar Filtro")
@@ -91,7 +176,7 @@ class MainWindow(QMainWindow):
         self.loading_animation = LoadingAnimationWidget()
         main_layout.addWidget(self.loading_animation)
 
-        # Configurar widget central
+        # Establece el widget central
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
@@ -102,20 +187,88 @@ class MainWindow(QMainWindow):
         self.source_file = ""
         self.loader_thread = None
 
-    def load_file(self):
-        file_name, _ = QFileDialog.getOpenFileName(self, "Abrir Archivo", "", "Archivos (*.pdf *.mpp)")
+    def start_jvm(self):
+        if jpype.isJVMStarted():
+            print("JVM ya iniciada.")
+            return
+        system = platform.system()
+
+        # Agregar las propiedades para deshabilitar el registro de Log4j2
+        jvm_args = [
+            "-Dlog4j2.loggerContextFactory=org.apache.logging.log4j.simple.SimpleLoggerContextFactory",
+            "-Dorg.apache.logging.log4j.simplelog.StatusLogger.level=OFF",
+            "-Dlog4j2.level=OFF"
+        ]
+
+        try:
+            if system == "Windows":
+                # Obtener JAVA_HOME
+                java_home = os.environ.get("JAVA_HOME")
+                if not java_home:
+                    raise EnvironmentError(
+                        "La variable de entorno JAVA_HOME no está configurada. "
+                        "Por favor, configúrala apuntando al directorio de instalación del JDK."
+                    )
+
+                # Construir la ruta a jvm.dll
+                jvm_path = os.path.join(java_home, "bin", "server", "jvm.dll")
+                if not os.path.exists(jvm_path):
+                    # Intentar con 'client' si 'server' no existe
+                    jvm_path = os.path.join(java_home, "bin", "client", "jvm.dll")
+                    if not os.path.exists(jvm_path):
+                        raise FileNotFoundError(
+                            f"No se encontró jvm.dll en las rutas:\n"
+                            f" - {os.path.join(java_home, 'bin', 'server', 'jvm.dll')}\n"
+                            f" - {os.path.join(java_home, 'bin', 'client', 'jvm.dll')}"
+                        )
+
+                # Iniciar la JVM con la ruta especificada y argumentos
+                jpype.startJVM(
+                    jvm_path,
+                    *jvm_args
+                )
+            else:
+                # Otros sistemas operativos (Linux, macOS, etc.)
+                jpype.startJVM(
+                    jpype.getDefaultJVMPath(),
+                    *jvm_args
+                )
+            print("JVM iniciada correctamente.")
+        except Exception as e:
+            print(f"Error al iniciar la JVM: {e}")
+            sys.exit(1)
+
+    def load_pdf_file(self):
+        self.load_file(file_type='pdf')
+
+    def load_mpp_file(self):
+        self.load_file(file_type='mpp')
+
+    def load_file(self, file_type=None):
+        if file_type == 'pdf':
+            file_filter = "Archivos PDF (*.pdf)"
+        elif file_type == 'mpp':
+            file_filter = "Archivos MPP (*.mpp)"
+        else:
+            file_filter = "Archivos (*.pdf *.mpp)"
+
+        file_name, _ = QFileDialog.getOpenFileName(self, "Abrir Archivo", "", file_filter)
         if file_name:
             self.source_file = file_name
             self.show_loading(True)
-            self.load_button.setEnabled(False)
+            self.load_pdf_button.setEnabled(False)
+            self.load_mpp_button.setEnabled(False)
 
-            # Determinar el tipo de archivo y usar el hilo correspondiente
+            # Determina el tipo de archivo y utiliza el hilo de carga adecuado
             if file_name.lower().endswith('.pdf'):
                 self.loader_thread = PDFLoaderThread(file_name)
+            elif file_name.lower().endswith('.mpp'):
+                self.loader_thread = MPPLoaderThread(file_name)
             else:
                 QMessageBox.warning(self, "Archivo no soportado", "Por favor seleccione un archivo PDF o MPP.")
                 self.show_loading(False)
-                self.load_button.setEnabled(True)
+                self.load_pdf_button.setEnabled(True)
+                self.load_mpp_button.setEnabled(True)
                 return
 
             self.loader_thread.tasks_extracted.connect(self.on_tasks_extracted)
@@ -126,7 +279,8 @@ class MainWindow(QMainWindow):
         self.task_tree = task_tree
         self.populate_table()
         self.show_loading(False)
-        self.load_button.setEnabled(True)
+        self.load_pdf_button.setEnabled(True)
+        self.load_mpp_button.setEnabled(True)
 
     def show_loading(self, show):
         if show:
@@ -137,30 +291,43 @@ class MainWindow(QMainWindow):
     def populate_table(self):
         self.table.setRowCount(len(self.tasks))
         for row, task in enumerate(self.tasks):
-            # Establecer el ID de la tarea en la columna correspondiente
-            self.table.setItem(row, 0, QTableWidgetItem(task['task_id']))
-            self.table.setItem(row, 1, QTableWidgetItem(str(task['level'])))
+            try:
+                # ID de Tarea
+                self.table.setItem(row, 0, QTableWidgetItem(str(task.get('task_id', ''))))
 
-            # Limpiar el nombre de la tarea
-            task_name = self.clean_task_name(task['name'])
-            if task['level'] > 0:
-                for i in range(row - 1, -1, -1):
-                    if self.tasks[i]['level'] < task['level']:
-                        parent_task = self.tasks[i]
-                        parent_name = self.clean_task_name(parent_task['name'])
-                        task_name = f"{parent_name} -> {task_name}"
-                        break
+                # Nivel
+                self.table.setItem(row, 1, QTableWidgetItem(str(task.get('level', ''))))
 
-            display_name = ' ' * task['level'] + task_name
-            self.table.setItem(row, 2, QTableWidgetItem(display_name))
-            self.table.setItem(row, 3, QTableWidgetItem(task['start_date']))
-            self.table.setItem(row, 4, QTableWidgetItem(task['end_date']))
-            self.table.setItem(row, 5, QTableWidgetItem(self.source_file))
+                # Nombre de la tarea con indentación visual
+                task_name = self.clean_task_name(task.get('name', ''))
+
+                # Usamos outline_level para la indentación visual
+                indentation = task.get('outline_level', 0)
+                display_name = '    ' * indentation + task_name
+                self.table.setItem(row, 2, QTableWidgetItem(display_name))
+
+                # Fechas
+                self.table.setItem(row, 3, QTableWidgetItem(str(task.get('start_date', ''))))
+                self.table.setItem(row, 4, QTableWidgetItem(str(task.get('end_date', ''))))
+
+                # Archivo fuente
+                self.table.setItem(row, 5, QTableWidgetItem(self.source_file))
+
+            except Exception as e:
+                print(f"Error al procesar tarea {row}: {str(e)}")
+                continue
 
         self.table.resizeColumnsToContents()
         self.update_task_counter()
 
     def clean_task_name(self, name):
+        """Limpia el nombre de la tarea, maneja casos donde name no es string."""
+        if name is None:
+            return ""
+
+        # Convertir a string si no lo es
+        name = str(name)
+
         cleaned_name = re.sub(r'^\d+[\.\-\s]+', '', name)
         return cleaned_name
 
@@ -173,7 +340,7 @@ class MainWindow(QMainWindow):
         for row in range(self.table.rowCount()):
             task_name = self.table.item(row, 2).text()
             normalized_task_name = normalize_string(task_name)
-            if is_start_end_task(task_name):
+            if self.table.item(row, 1).text() == "":  # Omitir si no hay ID
                 self.table.setRowHidden(row, True)
                 continue
 
@@ -220,6 +387,14 @@ class MainWindow(QMainWindow):
                 self.include_bar.setText(include_terms)
                 self.exclude_bar.setText(exclude_terms)
                 self.filter_tasks()
+
+    def closeEvent(self, event):
+        try:
+            if jpype.isJVMStarted():
+                jpype.shutdownJVM()
+        except Exception as e:
+            print(f"Error al cerrar la JVM: {e}")
+        event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

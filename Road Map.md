@@ -1,31 +1,25 @@
 ## Road Map
 
-1. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
-3. Implementar importasion de archivos .pdf, .xlsx y *.ppm
-4. Implementar que la tarea padre sea la superoposicion de las subtareas
-5. Implementar dias de escepsion
-6. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
-7. El scroll debe poder fuecionar sobre el diagrama de Gantt
-8. Implementar rodar tarea
-9. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-10. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
-11. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
-12. Implementar arrastrar y soltar
-13. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+1. Cuaando se selecciona una tarea que tiene hipervinculos, se pierde el formato de y dejan de fuecionar
+2. Al seleccionar Nuevo no se crea un archivo nuevo para iniciar un listado de tareas
+3. Las notas deberias podersne copiar facilmente a una barra de tareas diferente
+4. Implementar filtro al diagrama de Gantt
+5. Una tarea deberia poderse convestir en subtarea
+6. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
+7. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
+8. Implementar importasion de archivos .pdf, .xlsx y *.ppm
+9. Implementar que la tarea padre sea la superoposicion de las subtareas
+10. Implementar dias de escepsion
+11. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
+12. El scroll debe poder fuecionar sobre el diagrama de Gantt
+13. Implementar rodar tarea
+14. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+15. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
+16. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
+17. Implementar arrastrar y soltar
+18. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
 QTableWidget por QAbstractTableModel junto con QTableView
-
-PS E:\1. Rafael\3.Proyectos_de_Software\baby-project-manager> & C:/Users/raheb/AppData/Local/Microsoft/WindowsApps/python3.11.exe "e:/1. Rafael/3.Proyectos_de_Software/baby-project-manager/mpp_extractor.py"
-Error al iniciar la JVM: La variable JAVA_HOME no está configurada.
-Error al cargar el archivo: No module named 'net'
-Error calling Python override of QMainWindow::closeEvent(): Traceback (most recent call last):
-  File "e:\1. Rafael\3.Proyectos_de_Software\baby-project-manager\mpp_extractor.py", line 152, in closeEvent
-    jpype.shutdownJVM()
-  File "C:\Users\raheb\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\jpype\_core.py", line 367, in shutdownJVM
-    _jpype.shutdown(jpype.config.destroy_jvm, False)
-RuntimeError: Attempt to shutdown without a live JVM
-PS E:\1. Rafael\3.Proyectos_de_Software\baby-project-manager> 
-
 
 
 ↳
@@ -49,8 +43,9 @@ color = QColor(119, 33, 111)
 color = QColor("#77216F")
 
 pip install --upgrade pip
-pip install pdfplumber PySide6
-pip install PySide6 workalendar
+pip install pdfplumber
+pip install PySide6
+pip install workalendar
 pip install mpxj
 pip install JPype1
 

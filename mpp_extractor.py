@@ -1,8 +1,7 @@
 #mpp_extractor.py
-#3
+#6
 import sys
 import os
-import platform
 import jpype
 import mpxj
 from datetime import datetime
@@ -17,7 +16,6 @@ from PySide6.QtWidgets import (
     QFileDialog
 )
 from PySide6.QtCore import Qt
-
 
 class ProjectManagerWindow(QMainWindow):
     def __init__(self):
@@ -50,55 +48,11 @@ class ProjectManagerWindow(QMainWindow):
         ])
         layout.addWidget(self.table)
 
-        # Iniciar la JVM según el sistema operativo
-        self.start_jvm()
+        # Ya no necesitamos iniciar la JVM aquí
 
-    def start_jvm(self):
-        """
-        Inicia la JVM dependiendo del sistema operativo.
-        En Windows, especifica la ruta a jvm.dll.
-        En otros sistemas operativos, usa la configuración predeterminada.
-        """
-        system = platform.system()
-        jvm_args = ["-Dorg.apache.logging.log4j.simplelog.StatusLogger.level=OFF"]
-
-        try:
-            if system == "Windows":
-                # Obtener JAVA_HOME
-                java_home = os.environ.get("JAVA_HOME")
-                if not java_home:
-                    raise EnvironmentError(
-                        "La variable de entorno JAVA_HOME no está configurada. "
-                        "Por favor, configúrala apuntando al directorio de instalación del JDK."
-                    )
-
-                # Construir la ruta a jvm.dll
-                jvm_path = os.path.join(java_home, "bin", "server", "jvm.dll")
-                if not os.path.exists(jvm_path):
-                    # Intentar con client si server no existe (para versiones antiguas de JDK)
-                    jvm_path = os.path.join(java_home, "bin", "client", "jvm.dll")
-                    if not os.path.exists(jvm_path):
-                        raise FileNotFoundError(
-                            f"No se encontró jvm.dll en las rutas:\n"
-                            f" - {os.path.join(java_home, 'bin', 'server', 'jvm.dll')}\n"
-                            f" - {os.path.join(java_home, 'bin', 'client', 'jvm.dll')}"
-                        )
-
-                # Iniciar la JVM con la ruta especificada y argumentos
-                jpype.startJVM(
-                    jvm_path,
-                    *jvm_args
-                )
-            else:
-                # Otros sistemas operativos (Linux, macOS, etc.)
-                jpype.startJVM(
-                    jpype.getDefaultJVMPath(),
-                    *jvm_args
-                )
-            print("JVM iniciada correctamente.")
-        except Exception as e:
-            print(f"Error al iniciar la JVM: {e}")
-            sys.exit(1)
+    # Eliminamos el método start_jvm
+    # def start_jvm(self):
+    #     pass
 
     def format_outline_number(self, task):
         """Genera el número de esquema jerárquico para una tarea"""
@@ -162,7 +116,7 @@ class ProjectManagerWindow(QMainWindow):
                 outline_number = self.format_outline_number(task)
                 if outline_number:
                     level_item = QTableWidgetItem(outline_number)
-                    level_item.setTextAlignment(Qt.AlignCenter)
+                    level_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                     self.table.setItem(row, 1, level_item)
 
                 # Nombre de tarea con indentación
@@ -183,16 +137,14 @@ class ProjectManagerWindow(QMainWindow):
             print(f"Error al cargar el archivo: {str(e)}")
 
     def closeEvent(self, event):
-        jpype.shutdownJVM()
+        # Ya no cerramos la JVM aquí
         event.accept()
-
 
 def main():
     app = QApplication(sys.argv)
     window = ProjectManagerWindow()
     window.show()
     sys.exit(app.exec())
-
 
 if __name__ == '__main__':
     main()
