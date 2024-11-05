@@ -18,6 +18,8 @@ from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, Q
 from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal, QPoint, QAbstractTableModel, QModelIndex
 from hipervinculo import HyperlinkTextEdit
 
+#from file import class1 , class2, class3
+
 class LineEditDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super(LineEditDelegate, self).__init__(parent)
