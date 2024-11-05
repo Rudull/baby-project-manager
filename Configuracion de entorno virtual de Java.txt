@@ -1,0 +1,77 @@
+
+Paso 1: Verificar la instalación de Java en Windows
+
+    Verificar si Java está instalado:
+
+    Abre una ventana de comandos (CMD) y ejecuta:
+
+    cmd
+
+java -version
+
+y
+
+cmd
+
+    javac -version
+
+        Si ambos comandos muestran versiones, significa que tienes Java instalado.
+        Si recibes un mensaje de que el comando no se reconoce, necesitarás instalar el JDK.
+
+    Descargar e instalar el JDK si es necesario:
+
+        Descarga el Java Development Kit (JDK) desde el sitio oficial:
+            Descargar Oracle JDK
+
+        Asegúrate de descargar e instalar el JDK (no solo el JRE), ya que jvm.dll se incluye en el JDK.
+
+Paso 2: Configurar la variable de entorno JAVA_HOME
+
+    Encontrar la ruta de instalación del JDK:
+        Por defecto, el JDK se instala en C:\Program Files\Java\jdk-XX, donde XX es la versión de Java.
+        Por ejemplo, si tienes Java 17 instalado, la ruta podría ser C:\Program Files\Java\jdk-23.
+
+    Configurar JAVA_HOME:
+
+        Paso a paso:
+
+        a. Abrir Configuración de Variables de Entorno:
+            Haz clic derecho en "Este equipo" o "Mi PC" y selecciona Propiedades.
+            Selecciona Configuración avanzada del sistema.
+            En la pestaña Avanzado, haz clic en Variables de entorno....
+
+        b. Crear o editar JAVA_HOME:
+
+            En Variables del sistema, busca JAVA_HOME.
+
+            Si no existe, haz clic en Nueva....
+
+            Si existe, selecciónala y haz clic en Editar....
+
+            Establece:
+
+            yaml
+
+    Nombre de la variable: JAVA_HOME
+    Valor de la variable: C:\Program Files\Java\jdk-23
+
+    (Ajusta la ruta según tu instalación.)
+
+c. Agregar %JAVA_HOME%\bin al PATH (opcional pero recomendado):
+
+    En Variables del sistema, selecciona la variable Path y haz clic en Editar....
+
+    Haz clic en Nuevo y añade:
+
+    perl
+
+            %JAVA_HOME%\bin
+
+            Esto permite acceder a los comandos java y javac desde cualquier ubicación en la línea de comandos.
+
+        d. Guardar los cambios:
+            Haz clic en Aceptar en todas las ventanas abiertas para aplicar los cambios.
+
+    Reiniciar aplicaciones y terminales:
+        Cierra y vuelve a abrir cualquier ventana de comandos o aplicaciones para que las nuevas variables de entorno tengan efecto.
+

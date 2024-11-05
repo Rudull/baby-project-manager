@@ -15,6 +15,7 @@ import logging
 from datetime import datetime
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QPalette, QColor
+from PySide6.QtCore import Qt
 from main_window import MainWindow
 
 def setup_logging():
@@ -24,7 +25,7 @@ def setup_logging():
         os.makedirs(log_dir)
 
     log_file = os.path.join(log_dir, f"bpm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -99,7 +100,8 @@ def detect_system_theme():
             key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
             value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
             return value == 0  # True si es tema oscuro
-        except:
+        except Exception as e:
+            print(f"Error al detectar tema: {e}")
             return False
     elif platform.system() == 'Darwin':  # macOS
         try:
@@ -107,7 +109,8 @@ def detect_system_theme():
             cmd = 'defaults read -g AppleInterfaceStyle'
             subprocess.check_output(cmd.split())
             return True  # Si no hay error, está en modo oscuro
-        except:
+        except Exception as e:
+            print(f"Error al detectar tema: {e}")
             return False
     else:  # Linux y otros
         try:
@@ -115,15 +118,17 @@ def detect_system_theme():
             cmd = 'gsettings get org.gnome.desktop.interface gtk-theme'
             theme = subprocess.check_output(cmd.split()).decode().strip().lower()
             return 'dark' in theme
-        except:
+        except Exception as e:
+            print(f"Error al detectar tema: {e}")
             return False
 
 def setup_high_dpi():
     """Configura el soporte para pantallas de alta resolución."""
-    if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
-    if hasattr(Qt.ApplicationAttribute, 'AA_UseHighDpiPixmaps'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
 
 def main():
     """Función principal de la aplicación."""
@@ -136,14 +141,14 @@ def main():
         # Crear la aplicación
         app = QApplication(sys.argv)
         app.setStyle('Fusion')
-        
+
         # Configurar DPI
         setup_high_dpi()
 
         # Detectar y aplicar tema
         is_dark_theme = detect_system_theme()
         app.setPalette(setup_dark_palette() if is_dark_theme else setup_light_palette())
-        
+
         logger.info(f"Tema detectado: {'oscuro' if is_dark_theme else 'claro'}")
 
         # Crear y mostrar la ventana principal

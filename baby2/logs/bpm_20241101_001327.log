@@ -1,0 +1,15 @@
+2024-11-01 00:13:27,821 - __main__ - INFO - Iniciando Baby Project Manager
+2024-11-01 00:13:27,903 - __main__ - INFO - Tema detectado: oscuro
+2024-11-01 00:13:27,914 - __main__ - ERROR - Error fatal en la aplicación: 'GanttChart' object has no attribute 'update_parameters'
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main.py", line 155, in main
+    window = MainWindow()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 19, in __init__
+    self.setup_ui()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 68, in setup_ui
+    self.update_gantt_chart()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main_window.py", line 183, in update_gantt_chart
+    self.gantt_widget.update_parameters(min_date, max_date, pixels_per_day)
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/gantt_views.py", line 572, in update_parameters
+    self.chart.update_parameters(min_date, max_date, pixels_per_day)
+AttributeError: 'GanttChart' object has no attribute 'update_parameters'

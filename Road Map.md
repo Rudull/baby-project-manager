@@ -1,21 +1,26 @@
 ## Road Map
 
-1. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
-3. Implementar importasion de archivos .pdf, .xlsx y *.ppm
-4. Implementar que la tarea padre sea la superoposicion de las subtareas
-5. Implementar dias de escepsion
-6. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
-7. El scroll debe poder fuecionar sobre el diagrama de Gantt
-8. Implementar rodar tarea
-9. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-10. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
-11. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
-12. Implementar arrastrar y soltar
-13. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+1. Cuaando se selecciona una tarea que tiene hipervinculos, se pierde el formato de y dejan de fuecionar
+2. Al seleccionar Nuevo no se crea un archivo nuevo para iniciar un listado de tareas
+3. Las notas deberias podersne copiar facilmente a una barra de tareas diferente
+4. Implementar filtro al diagrama de Gantt
+5. Una tarea deberia poderse convestir en subtarea
+6. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
+7. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
+8. Implementar importasion de archivos .pdf, .xlsx y *.ppm
+9. Implementar que la tarea padre sea la superoposicion de las subtareas
+10. Implementar dias de escepsion
+11. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
+12. El scroll debe poder fuecionar sobre el diagrama de Gantt
+13. Implementar rodar tarea
+14. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+15. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
+16. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
+17. Implementar arrastrar y soltar
+18. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
 
 QTableWidget por QAbstractTableModel junto con QTableView
 
-Para el PDF compartido que corresponde a un cronograma. Visualmente, las tareas padres tienen un texto con mayor tamaño de letra y están en negrita, algunas subtareas están también en negrita, pero identadas con espacios y las subtareas de menor jerarquía está con texto en un número de letra más pequeño, no están en negrita y tiene mayor identacion. Existen tareas en color azul y letra inclinada con duración de 0 días que inician y terminan en la misma fecha que corresponden a hitos y no las debemos tener en cuenta. Dime si existe una forma de relacionar las tareas padre con sus subtareas y representarlo en la tabla que genera la aplicación. ¿Qué se debe ajustar el aplicativo que te comparto para lograr identificar dicha relación entre tareas?
 
 ↳
 
@@ -38,8 +43,11 @@ color = QColor(119, 33, 111)
 color = QColor("#77216F")
 
 pip install --upgrade pip
-pip install pdfplumber PySide6
-pip install PySide6 workalendar
+pip install pdfplumber
+pip install PySide6
+pip install workalendar
+pip install mpxj
+pip install JPype1
 
 Estructura de Archivos Propuesta:
 

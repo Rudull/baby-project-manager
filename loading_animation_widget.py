@@ -1,3 +1,5 @@
+#loading_animation_widget.py
+#6
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PySide6.QtGui import QMovie
 from PySide6.QtCore import Qt

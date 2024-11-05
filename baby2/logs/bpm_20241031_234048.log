@@ -1,0 +1,8 @@
+2024-10-31 23:40:48,757 - __main__ - INFO - Iniciando Baby Project Manager
+2024-10-31 23:40:49,248 - __main__ - ERROR - Error fatal en la aplicación: name 'Qt' is not defined
+Traceback (most recent call last):
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main.py", line 141, in main
+    setup_high_dpi()
+  File "/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/baby2/main.py", line 123, in setup_high_dpi
+    if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
+NameError: name 'Qt' is not defined
