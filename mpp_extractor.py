@@ -1,5 +1,5 @@
 #mpp_extractor.py
-#6
+#7
 import sys
 import os
 import jpype
@@ -141,6 +141,9 @@ class ProjectManagerWindow(QMainWindow):
         event.accept()
 
 def main():
+    # Inicializar JVM antes de crear la aplicación
+    if not jpype.isJVMStarted():
+        jpype.startJVM()
     app = QApplication(sys.argv)
     window = ProjectManagerWindow()
     window.show()

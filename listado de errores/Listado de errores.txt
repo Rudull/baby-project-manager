@@ -1,0 +1,20 @@
+Error al iniciar la JVM: No JVM shared library file (libjvm.so) found. Try setting up the JAVA_HOME environment variable properly.
+
+Este error indica que el programa está intentando acceder a la Java Virtual Machine (JVM), pero no puede encontrar la biblioteca compartida libjvm.so. Para solucionarlo, sigue estos pasos:
+
+    Instala Java: Asegúrate de que Java esté instalado en tu sistema. Puedes instalar OpenJDK con:
+
+    bash
+    sudo apt install openjdk-11-jdk
+    
+--------------------------------------------------------------------------------------------
+
+Gtk-Message: 23:48:54.418: Failed to load module "xapp-gtk3-module"
+
+Este mensaje indica que el sistema no puede cargar el módulo xapp-gtk3-module, que es un complemento para GTK. Aunque este mensaje puede ser molesto, generalmente no afecta la ejecución del programa, pero puedes intentar instalarlo si deseas eliminar el mensaje. En sistemas basados en Debian/Ubuntu, puedes instalarlo con:
+
+bash
+sudo apt install xapp
+
+------------------------------------------------------------------------------------------
+
