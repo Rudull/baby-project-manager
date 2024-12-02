@@ -1,4 +1,5 @@
-# Hipervinculos en notas OK
+# Integracion file_gui
+# 2
 import os
 import sys
 import subprocess
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont, QPainterPath, QPalette, QContextMenuEvent, QKeySequence, QShortcut, QWheelEvent
 from PySide6.QtCore import Qt, QDate, QRect, QTimer, QSize, QRectF, QEvent, Signal, QPoint, QAbstractTableModel, QModelIndex
 from hipervinculo import HyperlinkTextEdit
+from file_gui import MainWindow as FileGUIWindow
 
 #from file import class1 , class2, class3
 
@@ -1308,13 +1310,14 @@ class TaskTableWidget(QWidget):
         reset_all_colors_action.triggered.connect(self.reset_all_colors)
 
         import_menu = menu.addMenu("Importar")
-        import_menu.addAction("PDF")
-        import_menu.addAction("MPP")
-        import_menu.addAction("XLSX")
+        import_pdf_action = import_menu.addAction("PDF")
+        import_mpp_action = import_menu.addAction("MPP")
+        import_xlsx_action = import_menu.addAction("XLSX")
 
-        export_menu = menu.addMenu("Exportar")
-        export_menu.addAction("PDF")
-        export_menu.addAction("XLSX")
+        # Conectar las acciones de importación
+        import_pdf_action.triggered.connect(lambda: self.show_file_gui('pdf'))
+        import_mpp_action.triggered.connect(lambda: self.show_file_gui('mpp'))
+        import_xlsx_action.triggered.connect(lambda: self.show_file_gui('xlsx'))
 
         config_menu = menu.addMenu("Configuración")
         language_menu = config_menu.addMenu("Idioma")
@@ -1550,6 +1553,85 @@ class TaskTableWidget(QWidget):
             self.model.index(self.model.rowCount() - 1, self.model.columnCount() - 1),
             [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.DecorationRole, Qt.ItemDataRole.UserRole]
         )
+
+    def show_file_gui(self, file_type):
+        self.file_gui_window = FileGUIWindow()
+        self.file_gui_window.tasks_imported.connect(self.import_tasks)
+
+        if file_type == 'pdf':
+            self.file_gui_window.load_pdf_file()
+        elif file_type == 'mpp':
+            self.file_gui_window.load_mpp_file()
+        elif file_type == 'xlsx':
+            self.file_gui_window.load_xlsx_file()
+
+        self.file_gui_window.show()
+
+    def import_tasks(self, tasks):
+        for task_data in tasks:
+            # Convertir el formato de fecha si es necesario
+            start_date = self.convert_date_format(task_data.get('start_date'))
+            end_date = self.convert_date_format(task_data.get('end_date'))
+
+            new_task = {
+                'NAME': task_data.get('name', ''),
+                'START': start_date,
+                'END': end_date,
+                'DURATION': self.calculate_duration(start_date, end_date),
+                'DEDICATION': "40",  # valor por defecto
+                'COLOR': QColor(34, 163, 159).name(),
+                'NOTES': ""
+            }
+            self.add_task_to_table(new_task)
+
+    def convert_date_format(self, date_str):
+        """Convierte el formato de fecha del archivo importado al formato usado en Baby."""
+        if not date_str or date_str == "N/A":
+            return QDate.currentDate().toString("dd/MM/yyyy")
+        try:
+            # Intentar diferentes formatos de fecha comunes
+            formats = [
+                "%Y-%m-%d",      # 2023-12-31
+                "%d/%m/%Y",      # 31/12/2023
+                "%d-%m-%Y",      # 31-12-2023
+                "%Y/%m/%d",      # 2023/12/31
+                "%m/%d/%Y",      # 12/31/2023
+                "%d.%m.%Y",      # 31.12.2023
+                "%Y.%m.%d",      # 2023.12.31
+                "%d %b %Y",      # 31 Dec 2023
+                "%d %B %Y",      # 31 December 2023
+                "%Y%m%d"         # 20231231
+            ]
+
+            for fmt in formats:
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    return date_obj.strftime("%d/%m/%Y")
+                except ValueError:
+                    continue
+
+            # Si ningún formato coincide
+            return QDate.currentDate().toString("dd/MM/yyyy")
+        except:
+            return QDate.currentDate().toString("dd/MM/yyyy")
+
+    def calculate_duration(self, start_date, end_date):
+        """Calcula la duración en días laborables entre dos fechas."""
+        try:
+            start = datetime.strptime(start_date, "%d/%m/%Y")
+            end = datetime.strptime(end_date, "%d/%m/%Y")
+
+            cal = Colombia()
+            business_days = 0
+            current_date = start
+            while current_date <= end:
+                if cal.is_working_day(current_date.date()):
+                    business_days += 1
+                current_date += timedelta(days=1)
+
+            return str(business_days)
+        except:
+            return "1"
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25

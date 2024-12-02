@@ -1,5 +1,5 @@
 #file_gui.py
-#
+# 2
 import sys
 import os
 import platform
@@ -124,6 +124,8 @@ class XLSXLoaderThread(QThread):
             self.tasks_extracted.emit([], [])
 
 class MainWindow(QMainWindow):
+    tasks_imported = Signal(list)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gantt Chart Extractor")
@@ -329,6 +331,7 @@ class MainWindow(QMainWindow):
         self.tasks = tasks
         self.task_tree = task_tree
         self.populate_table()
+        self.tasks_imported.emit(self.tasks)
         self.show_loading(False)
         self.load_pdf_button.setEnabled(True)
         self.load_mpp_button.setEnabled(True)
