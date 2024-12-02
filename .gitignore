@@ -1,0 +1,9 @@
+```
+__pycache__/
+*.pyc
+*.ft
+.idea/
+*.mpp
+*.xlsx
+*.pdf
+```
