@@ -4,6 +4,7 @@ import re
 import pdfplumber
 from PySide6.QtCore import QThread, Signal
 from filter_util import normalize_string, is_start_end_task
+from datetime import datetime
 
 class TaskTreeNode:
     def __init__(self, task):
@@ -80,8 +81,19 @@ def extract_tasks(file_path):
                             }
 
                             if not is_start_end_task(task_name):
-                                tasks.append(task)
-                                task_tree.append(TaskTreeNode(task))
+                                    # Convertir fechas a datetime para comparar
+                                    try:
+                                        start = datetime.strptime(start_date, '%d/%m/%Y')
+                                        end = datetime.strptime(end_date, '%d/%m/%Y')
+
+                                        # Si la fecha de inicio y fin son iguales, es un hito
+                                        if start != end:
+                                            tasks.append(task)
+                                            task_tree.append(TaskTreeNode(task))
+                                    except ValueError:
+                                        # Si hay error al parsear las fechas, agregamos la tarea
+                                        tasks.append(task)
+                                        task_tree.append(TaskTreeNode(task))
 
     # Construir jerarquía de tareas
     for i in range(len(task_tree)):

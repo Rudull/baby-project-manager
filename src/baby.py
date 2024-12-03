@@ -1,5 +1,5 @@
-# Integracion file_gui
-# 2
+#Integracion file_gui
+#9
 import os
 import sys
 import subprocess
@@ -41,7 +41,14 @@ class LineEditDelegate(QStyledItemDelegate):
         editor.setText(text)
 
     def setModelData(self, editor, model, index):
-        text = editor.text()
+        text = editor.text().lstrip()  # Eliminar espacios al inicio
+
+        # Asumiendo que una subtarea puede tener un nombre con espacios antes, eliminamos esos espacios
+        task = index.data(Qt.ItemDataRole.UserRole)
+        if task and task.is_subtask:
+            # Eliminar la indentación al guardar el nombre de una subtarea
+            text = text.lstrip()  # Elimina espacios en blanco iniciales que podrían ser la indentación
+
         model.setData(index, text, Qt.ItemDataRole.EditRole)
         task = index.data(Qt.ItemDataRole.UserRole)
         if task:
@@ -187,6 +194,10 @@ class Task:
         self.is_editing = False
         self.is_collapsed = False
 
+    @property
+    def formatted_name(self):
+        return "       " + self.name if self.is_subtask else self.name
+
     def has_subtasks(self):
         return bool(self.subtasks)
 
@@ -246,7 +257,7 @@ class TaskTableModel(QAbstractTableModel):
             if column == 0:
                 return ""  # Para el botón de estado, se usará un delegado
             elif column == 1:
-                return task.name
+                return task.formatted_name  # Cambia aquí
             elif column == 2:
                 return task.start_date
             elif column == 3:
@@ -863,7 +874,13 @@ class GanttChart(QWidget):
                 bar_height = self.row_height * 0.9
                 bar_y = y + (self.row_height - bar_height) / 2
 
-                painter.setBrush(QBrush(task.color))
+                if task.is_subtask:
+                    # Oscurecer el color para las subtareas
+                    darker_color = task.parent_task.color.darker(120)  # Oscurecer el color en 20%
+                    painter.setBrush(QBrush(darker_color))
+                else:
+                    painter.setBrush(QBrush(task.color))
+
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawRect(QRectF(x, bar_y, width, bar_height))
 
@@ -1309,15 +1326,8 @@ class TaskTableWidget(QWidget):
         reset_all_colors_action = menu.addAction("Restablecer colores")
         reset_all_colors_action.triggered.connect(self.reset_all_colors)
 
-        import_menu = menu.addMenu("Importar")
-        import_pdf_action = import_menu.addAction("PDF")
-        import_mpp_action = import_menu.addAction("MPP")
-        import_xlsx_action = import_menu.addAction("XLSX")
-
-        # Conectar las acciones de importación
-        import_pdf_action.triggered.connect(lambda: self.show_file_gui('pdf'))
-        import_mpp_action.triggered.connect(lambda: self.show_file_gui('mpp'))
-        import_xlsx_action.triggered.connect(lambda: self.show_file_gui('xlsx'))
+        import_action = menu.addAction("Importar cronogramas")
+        import_action.triggered.connect(lambda: self.show_file_gui())
 
         config_menu = menu.addMenu("Configuración")
         language_menu = config_menu.addMenu("Idioma")
@@ -1554,16 +1564,24 @@ class TaskTableWidget(QWidget):
             [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.DecorationRole, Qt.ItemDataRole.UserRole]
         )
 
-    def show_file_gui(self, file_type):
+    def show_file_gui(self, file_type=None):
+        # Verificar si ya existe una ventana abierta
+        for window in self.main_window.file_gui_windows:
+            if not window.isHidden():
+                window.raise_()
+                window.activateWindow()
+                return
+
+        # Crear nueva ventana
         self.file_gui_window = FileGUIWindow()
         self.file_gui_window.tasks_imported.connect(self.import_tasks)
+        self.main_window.file_gui_windows.append(self.file_gui_window)
 
-        if file_type == 'pdf':
-            self.file_gui_window.load_pdf_file()
-        elif file_type == 'mpp':
-            self.file_gui_window.load_mpp_file()
-        elif file_type == 'xlsx':
-            self.file_gui_window.load_xlsx_file()
+        # Conectar señal de cierre para limpieza
+        self.file_gui_window.destroyed.connect(
+            lambda: self.main_window.file_gui_windows.remove(self.file_gui_window)
+            if self.file_gui_window in self.main_window.file_gui_windows else None
+        )
 
         self.file_gui_window.show()
 
@@ -1572,17 +1590,29 @@ class TaskTableWidget(QWidget):
             # Convertir el formato de fecha si es necesario
             start_date = self.convert_date_format(task_data.get('start_date'))
             end_date = self.convert_date_format(task_data.get('end_date'))
+            # Usar el color proporcionado en los datos de la tarea
+            color = task_data.get('color', QColor(34, 163, 159).name())
+
+            # Obtener el nombre de la tarea directamente de task_data
+            task_name = task_data.get('name', '').lstrip()  # Usar get para evitar KeyError
 
             new_task = {
-                'NAME': task_data.get('name', ''),
-                'START': start_date,
-                'END': end_date,
-                'DURATION': self.calculate_duration(start_date, end_date),
+                'NAME': task_name,
+                'START': self.convert_date_format(task_data.get('start_date', '')),
+                'END': self.convert_date_format(task_data.get('end_date', '')),
+                'DURATION': self.calculate_duration(
+                    self.convert_date_format(task_data.get('start_date', '')),
+                    self.convert_date_format(task_data.get('end_date', ''))
+                ),
                 'DEDICATION': "40",  # valor por defecto
-                'COLOR': QColor(34, 163, 159).name(),
+                'COLOR': color,
                 'NOTES': ""
             }
             self.add_task_to_table(new_task)
+
+            # Actualizar el Gantt después de agregar cada tarea
+            if self.main_window:
+                self.main_window.update_gantt_chart()
 
     def convert_date_format(self, date_str):
         """Convierte el formato de fecha del archivo importado al formato usado en Baby."""
@@ -1612,7 +1642,8 @@ class TaskTableWidget(QWidget):
 
             # Si ningún formato coincide
             return QDate.currentDate().toString("dd/MM/yyyy")
-        except:
+        except Exception as e:
+            print(f"Error al convertir fecha '{date_str}': {e}")
             return QDate.currentDate().toString("dd/MM/yyyy")
 
     def calculate_duration(self, start_date, end_date):
@@ -1630,8 +1661,9 @@ class TaskTableWidget(QWidget):
                 current_date += timedelta(days=1)
 
             return str(business_days)
-        except:
-            return "1"
+        except Exception as e:
+               print(f"Error al calcular duración: {e}")
+               return "1"
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
@@ -1651,6 +1683,7 @@ class MainWindow(QMainWindow):
         self.wheel_accumulator = 0
         self.wheel_threshold = 100  # Ajusta este valor
         self.current_view = "complete"  # Vista por defecto
+        self.file_gui_windows = []
 
         # Crear un widget central con QGridLayout
         main_widget = QWidget()
@@ -2393,7 +2426,7 @@ class MainWindow(QMainWindow):
             )
             if reply == QMessageBox.StandardButton.Save:
                 if self.task_table_widget.save_file():
-                    event.accept()
+                    self.cleanup_and_exit(event)
                 else:
                     # Si el guardado falla, pregunta al usuario si desea salir sin guardar
                     secondary_reply = QMessageBox.question(
@@ -2403,14 +2436,29 @@ class MainWindow(QMainWindow):
                         QMessageBox.StandardButton.No
                     )
                     if secondary_reply == QMessageBox.StandardButton.Yes:
-                        event.accept()
+                        self.cleanup_and_exit(event)
                     else:
                         event.ignore()
             elif reply == QMessageBox.StandardButton.Discard:
-                event.accept()
+                self.cleanup_and_exit(event)
             else:
                 event.ignore()
         else:
+            self.cleanup_and_exit(event)
+
+    def cleanup_and_exit(self, event):
+            # Cerrar todas las ventanas de FileGUI abiertas
+            for window in self.file_gui_windows:
+                window.close()
+
+            # Cerrar la JVM al final
+            try:
+                from jvm_manager import JVMManager
+                if JVMManager.is_jvm_started():
+                    JVMManager.shutdown()
+            except Exception as e:
+                print(f"Error al cerrar la JVM: {e}")
+
             event.accept()
 
     def resizeEvent(self, event):
