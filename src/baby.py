@@ -1,5 +1,5 @@
-#Integracion file_gui
-#9
+#baby.py
+#15
 import os
 import sys
 import subprocess
@@ -747,8 +747,10 @@ class GanttChart(QWidget):
             task_index = int((self.click_pos.y() + self.vertical_offset) / self.row_height)
             if 0 <= task_index < len(self.tasks):
                 task = self.tasks[task_index]
+                task.name = task.name.lstrip()  # Eliminar espacios al inicio
                 self.highlighted_task_index = task_index  # Resaltar la tarea
                 self.update()  # Redibujar el diagrama de Gantt
+
                 # Seleccionar la fila en la tabla de tareas
                 self.main_window.task_table_widget.table_view.selectRow(task_index)
                 # Asegurarse de que la fila sea visible
@@ -756,6 +758,7 @@ class GanttChart(QWidget):
                     self.main_window.task_table_widget.model.index(task_index, 0)
                 )
                 self.show_floating_menu(self.click_pos, task)
+                task.name = task.name.lstrip()  # Eliminar espacios al inicio
         # Restablecer la bandera
         self.double_click_occurred = False
 
@@ -1523,6 +1526,24 @@ class TaskTableWidget(QWidget):
             print(f"Error al cargar el archivo: {e}")
 
     def add_task_to_table(self, task_data, editable=False):
+        # Determinar si la tarea es padre o subtarea basado en el nivel
+        level = task_data.get('level', '')
+        is_subtask = False
+        parent_task = None
+
+        # Si hay tareas existentes, buscar el padre potencial
+        if self.model.tasks:
+            # Si el nivel indica que es una subtarea
+            if level and '.' in level:  # Por ejemplo: "1.1", "2.1", etc.
+                is_subtask = True
+                parent_level = level.rsplit('.', 1)[0]  # Obtener el nivel del padre
+                # Buscar la tarea padre
+                for task in reversed(self.model.tasks):
+                    if hasattr(task, 'level') and task.level == parent_level:
+                        parent_task = task
+                        break
+
+        # Crear la nueva tarea
         task = Task(
             name=task_data.get('NAME', "Nueva Tarea"),
             start_date=task_data.get('START', QDate.currentDate().toString("dd/MM/yyyy")),
@@ -1534,14 +1555,20 @@ class TaskTableWidget(QWidget):
             notes_html=task_data.get('NOTES_HTML', ""),
             file_links=task_data.get('FILE_LINKS', {})
         )
-        task.is_editing = editable  # Establecer is_editing según el parámetro editable
-        task.is_collapsed = False  # Inicializar is_collapsed
+
+        task.level = level  # Guardar el nivel
+        task.is_subtask = is_subtask
+        task.is_editing = editable
+        task.is_collapsed = False
+
+        # Si es una subtarea y encontramos el padre
+        if is_subtask and parent_task:
+            task.parent_task = parent_task
+            parent_task.subtasks.append(task)
+
         self.model.insertTask(task)
         self.model.update_visible_tasks()
         self.taskDataChanged.emit()
-        if self.main_window:
-            self.main_window.set_unsaved_changes(True)
-            self.main_window.update_gantt_chart()
 
     def reset_all_colors(self):
         default_color = QColor(34, 163, 159)  # Color por defecto
@@ -1553,8 +1580,27 @@ class TaskTableWidget(QWidget):
             self.main_window.update_gantt_chart()
 
     def new_project(self):
-        # Implementar la lógica para crear un nuevo proyecto
-        pass
+        # Verificar si hay cambios sin guardar
+        if self.main_window and self.main_window.check_unsaved_changes():
+            # Limpiar todas las tareas existentes
+            self.model.beginResetModel()
+            self.model.tasks = []
+            self.model.update_visible_tasks()
+            self.model.endResetModel()
+
+            # Reiniciar variables relacionadas con el archivo
+            if hasattr(self, 'current_file_path'):
+                self.current_file_path = None
+
+            # Actualizar el diagrama de Gantt
+            if self.main_window:
+                self.main_window.update_gantt_chart(set_unsaved=False)
+                self.main_window.set_unsaved_changes(False)
+
+            # Reiniciar el scrollbar compartido
+            if hasattr(self, 'shared_scrollbar'):
+                self.shared_scrollbar.setValue(0)
+                self.update_shared_scrollbar_range()
 
     def update_state_buttons(self):
         # Emitir una señal para actualizar la vista sin cambiar los colores
@@ -1967,7 +2013,10 @@ class MainWindow(QMainWindow):
         move_up_action = menu.addAction("Mover arriba")
         move_down_action = menu.addAction("Mover abajo")
         if not task.is_subtask:
+            convert_to_subtask_action = menu.addAction("Convertir en subtarea")
             add_subtask_action = menu.addAction("Agregar subtarea")
+        else:
+            convert_to_parent_action = menu.addAction("Convertir en tarea padre")
         delete_action = menu.addAction("Eliminar")
         reset_color_action = menu.addAction("Color por defecto")
 
@@ -1986,6 +2035,10 @@ class MainWindow(QMainWindow):
             self.duplicate_task(task_index)
         elif action_text == "Insertar" and not task.is_subtask:
             self.insert_task(task_index)
+        elif action_text == "Convertir en subtarea" and not task.is_subtask:
+            self.convert_to_subtask(task_index)
+        elif action_text == "Convertir en tarea padre" and task.is_subtask:
+            self.convert_to_parent_task(task_index)
         elif action_text == "Mover arriba":
             self.move_task_up(task_index)
         elif action_text == "Mover abajo":
@@ -2287,6 +2340,85 @@ class MainWindow(QMainWindow):
             # Si ya está en la última posición, no hacer nada
             pass
 
+    def convert_to_subtask(self, task_index):
+        model = self.model
+        if task_index < len(model.visible_to_actual):
+            actual_row = model.visible_to_actual[task_index]
+            task = model.tasks[actual_row]
+
+            if task and not task.is_subtask:
+                # Buscar la tarea padre anterior
+                prev_parent_index = actual_row - 1
+                while prev_parent_index >= 0 and model.tasks[prev_parent_index].is_subtask:
+                    prev_parent_index -= 1
+
+                if prev_parent_index >= 0:
+                    parent_task = model.tasks[prev_parent_index]
+                    # Convertir la tarea en subtarea
+                    task.is_subtask = True
+                    task.parent_task = parent_task
+                    parent_task.subtasks.append(task)
+
+                    # Mover todas las subtareas existentes
+                    subtasks = task.subtasks
+                    task.subtasks = []
+
+                    # Si la tarea tenía subtareas, transferirlas al nuevo padre
+                    for subtask in subtasks:
+                        subtask.parent_task = parent_task
+                        parent_task.subtasks.append(subtask)
+
+                    # Actualizar el modelo
+                    model.update_visible_tasks()
+                    model.layoutChanged.emit()
+                    self.update_gantt_chart()
+                    self.set_unsaved_changes(True)
+
+    def convert_to_parent_task(self, task_index):
+        model = self.model
+        if task_index < len(model.visible_to_actual):
+            actual_row = model.visible_to_actual[task_index]
+            task = model.tasks[actual_row]
+
+            if task and task.is_subtask:
+                # Guardar el padre actual
+                current_parent = task.parent_task
+
+                # Quitar la tarea de la lista de subtareas del padre actual
+                if current_parent:
+                    current_parent.subtasks.remove(task)
+
+                # Convertir en tarea padre
+                task.is_subtask = False
+                task.parent_task = None
+                task.subtasks = []
+                task.is_collapsed = False
+
+                # Encontrar el último índice del bloque actual de tareas
+                last_block_index = actual_row
+                while last_block_index + 1 < len(model.tasks):
+                    next_task = model.tasks[last_block_index + 1]
+                    if not next_task.is_subtask:
+                        break
+                    last_block_index += 1
+
+                # Mover la tarea al final del último bloque
+                model.tasks.remove(task)
+                model.tasks.insert(last_block_index , task)
+
+                # Actualizar el modelo
+                model.update_visible_tasks()
+                model.layoutChanged.emit()
+                self.update_gantt_chart()
+                self.set_unsaved_changes(True)
+
+                # Seleccionar la tarea en su nueva posición
+                new_actual_row = model.tasks.index(task)
+                new_visible_row = model.actual_to_visible.get(new_actual_row)
+                if new_visible_row is not None:
+                    self.table_view.selectRow(new_visible_row)
+                    self.table_view.scrollTo(model.index(new_visible_row, 0))
+
     def reset_task_color(self, task_index):
         if 0 <= task_index < len(self.tasks):
             task = self.tasks[task_index]
@@ -2329,10 +2461,7 @@ class MainWindow(QMainWindow):
             task = self.model.getTask(row)
             if task:
                 self.tasks.append(task)
-        # Imprimir la lista de tareas para depuración
-        print("Updated self.tasks:")
-        for idx, task in enumerate(self.tasks):
-            print(f"Index {idx}: Task Name: {task.name}")
+
         # Actualizar las tareas en el diagrama de Gantt
         self.gantt_chart.tasks = self.tasks
 

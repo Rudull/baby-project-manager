@@ -19,6 +19,8 @@ li.checked::marker { content: "\2612"; }
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {'Plantilla - Diagramas de Principio SE Digitales 110kV.msg': 'D:\\6. Estandarizacion\\Plantilla - Diagramas de Principio SE Digitales 110kV.msg', 'R12-DPPIO-V0.0.pdf': '/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/Archivos ejemplo/R12-DPPIO-V0.0.pdf', 'Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg': '/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/Archivos ejemplo/Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg', 'EM094.zip': '/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/Archivos ejemplo/EM094.zip'}
@@ -52,6 +54,8 @@ li.checked::marker { content: "\2612"; }
 <p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p>
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">33GIRARDOTA</span></p></body></html>
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {'Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg': 'D:\\1. Proyectos\\10._Girardota\\5. Insumos\\3. Correos\\Revisión de alcance de CP puntos pendientes para evaluación SE Girardota.msg', 'EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_PV.pdf': 'D:\\1. Proyectos\\10._Girardota\\5. Insumos\\EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_PV.pdf', 'SACOA3- Cronograma 20230224.pdf': 'D:\\1. Proyectos\\SACOA3- Cronograma 20230224.pdf', 'EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_Color.pdf': 'D:\\1. Proyectos\\10_Girardota\\5. Insumos\\EXPVA-EJ-0401-R17-G00-ELE-PLA-141-00_Color.pdf'}
@@ -83,6 +87,8 @@ li.checked::marker { content: "\2612"; }
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {'R12-DPPIO-V0.0 simplemente se alerga el nombre para hacer pruebas.pdf': '/mnt/007358280B6294C8/1. Rafael/3.Proyectos_de_Software/baby-project-manager/Archivos ejemplo/R12-DPPIO-V0.0 simplemente se alerga el nombre para hacer pruebas.pdf'}
@@ -101,6 +107,8 @@ COLLAPSED: True
 NOTES_HTML_BEGIN
 1. Actualizar diagrama unifilar, cambio de CTs de celdas de 13.2 kV<br>
 2. Actualizar diagrama de principio y cantidades (Se debe hacer completo)
+
+
 
 
 
@@ -149,6 +157,8 @@ Hacer manual de operacion
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -165,6 +175,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -213,6 +225,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -229,6 +243,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -277,6 +293,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -293,22 +311,15 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><meta charset="utf-8" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }
+</style></head><body style=" font-family:'IBM Plex Sans'; font-size:10pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" color:#f0f0f0;">Esta era una tarea padre</span></p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; color:#f0f0f0;"><br /></p></body></html>
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -316,8 +327,8 @@ FILE_LINKS_END
 [/TASK]
 
 [TASK]
-NAME: Malena Detallada
-PARENT:
+NAME:        Malena Detallada
+PARENT: Oriente Detallada Bahia Lines 220
 START: 28/01/2025
 END: 03/12/2025
 DURATION: 210
@@ -336,6 +347,8 @@ li.checked::marker { content: "\2612"; }
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -343,8 +356,8 @@ FILE_LINKS_END
 [/TASK]
 
 [TASK]
-NAME: la edito despues
-PARENT: Malena Detallada
+NAME:        la edito despues
+PARENT: Oriente Detallada Bahia Lines 220
 START: 28/01/2025
 END: 03/12/2025
 DURATION: 210
@@ -352,7 +365,14 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
-
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><meta charset="utf-8" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }
+</style></head><body style=" font-family:'IBM Plex Sans'; font-size:10pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;">p<span style=" color:#f0f0f0;">rueba, esta ens una subtarea de la tarea padre que voy a convertir en subtarea</span></p></body></html>
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -361,7 +381,7 @@ FILE_LINKS_END
 
 [TASK]
 NAME: esta es una copia
-PARENT: Malena Detallada
+PARENT:
 START: 28/01/2025
 END: 03/12/2025
 DURATION: 210
@@ -369,6 +389,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 NOTES_HTML_END
 FILE_LINKS_BEGIN
@@ -386,6 +408,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -434,6 +458,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -450,6 +476,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -498,6 +526,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -514,6 +544,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: True
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -562,6 +594,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -578,6 +612,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -626,6 +662,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -642,6 +680,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -690,6 +730,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -706,6 +748,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -754,6 +798,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -770,6 +816,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 
@@ -818,6 +866,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -850,6 +900,8 @@ NOTES_HTML_BEGIN
 
 
 
+
+
 NOTES_HTML_END
 FILE_LINKS_BEGIN
 {}
@@ -866,6 +918,8 @@ DEDICATION: 100
 COLOR: #22a39f
 COLLAPSED: False
 NOTES_HTML_BEGIN
+
+
 
 
 

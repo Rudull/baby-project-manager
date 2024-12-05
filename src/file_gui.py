@@ -1,5 +1,5 @@
 #file_gui.py
-#6
+#12
 import sys
 import os
 import platform
@@ -111,13 +111,24 @@ class MainWindow(QMainWindow):
 
     # Constantes para anchos de columna
     COLUMN_WIDTHS = {
+        'selection': 20,    # Ancho de la columna de selección
         'task_id': 50,    # Ancho de la columna "ID de Tarea"
         'level': 150,       # Ancho de la columna "Nivel"
         'name': 700,       # Ancho de la columna "Nombre de Tarea"
         'start_date': 100, # Ancho de la columna "Fecha Inicio"
         'end_date': 100,   # Ancho de la columna "Fecha Fin"
-        'source': 200      # Ancho de la columna "Archivo Fuente"
     }
+
+    def table_cell_clicked(self, row, column):
+        # Si se hace clic en la columna del nombre (columna 3)
+        if column == 3:
+            checkbox_item = self.table.item(row, 0)
+            if checkbox_item:
+                # Cambiar el estado del checkbox
+                new_state = (Qt.CheckState.Unchecked
+                            if checkbox_item.checkState() == Qt.CheckState.Checked
+                            else Qt.CheckState.Checked)
+                checkbox_item.setCheckState(new_state)
 
     def __init__(self):
         super().__init__()
@@ -200,9 +211,15 @@ class MainWindow(QMainWindow):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Nivel", "Nombre de Tarea",
-            "Fecha Inicio", "Fecha Fin", "Archivo Fuente"
+            "", "ID", "Nivel", "Nombre de Tarea",
+            "Fecha Inicio", "Fecha Fin"
         ])
+
+        # Conectar la señal de cambio de celda
+        self.table.itemChanged.connect(self.on_item_changed)
+
+        # Conectar la señal de clic en celda
+        self.table.cellClicked.connect(self.table_cell_clicked)
 
         # Obtener el header horizontal
         header = self.table.horizontalHeader()
@@ -211,20 +228,20 @@ class MainWindow(QMainWindow):
         # Columnas con ancho fijo
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
         header.setSectionResizeMode(4, QHeaderView.Fixed)
         header.setSectionResizeMode(5, QHeaderView.Fixed)
 
         # Columna del nombre con redimensionamiento flexible
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
 
         # Establecer los anchos iniciales
-        self.table.setColumnWidth(0, self.COLUMN_WIDTHS['task_id'])
-        self.table.setColumnWidth(1, self.COLUMN_WIDTHS['level'])
-        # La columna 2 (nombre) se ajustará automáticamente
-        self.table.setColumnWidth(3, self.COLUMN_WIDTHS['start_date'])
-        self.table.setColumnWidth(4, self.COLUMN_WIDTHS['end_date'])
-        self.table.setColumnWidth(5, self.COLUMN_WIDTHS['source'])
+        self.table.setColumnWidth(0, self.COLUMN_WIDTHS['selection'])  # Ancho columna Selección
+        self.table.setColumnWidth(1, self.COLUMN_WIDTHS['task_id'])
+        self.table.setColumnWidth(2, self.COLUMN_WIDTHS['level'])
+        # La columna 3 (nombre) se ajustará automáticamente
+        self.table.setColumnWidth(4, self.COLUMN_WIDTHS['start_date'])
+        self.table.setColumnWidth(5, self.COLUMN_WIDTHS['end_date'])
 
         main_layout.addWidget(self.table)
 
@@ -340,34 +357,45 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(self.tasks))
         for row, task in enumerate(self.tasks):
             try:
+                # Añadir checkbox
+                checkbox = QTableWidgetItem()
+                checkbox.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+                checkbox.setCheckState(Qt.CheckState.Checked)  # Seleccionado por defecto
+                self.table.setItem(row, 0, checkbox)
+
                 # ID de Tarea
-                self.table.setItem(row, 0, QTableWidgetItem(str(task.get('task_id', ''))))
+                id_item = QTableWidgetItem(str(task.get('task_id', '')))
+                id_item.setFlags(id_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 1, id_item)
 
                 # Nivel
-                self.table.setItem(row, 1, QTableWidgetItem(str(task.get('level', ''))))
+                level_item = QTableWidgetItem(str(task.get('level', '')))
+                level_item.setFlags(level_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 2, level_item)
 
                 # Nombre de la tarea con indentación visual
                 task_name = self.clean_task_name(task.get('name', ''))
-
-                # Usamos outline_level para la indentación visual
                 indentation = task.get('outline_level', 0)
                 display_name = '    ' * indentation + task_name
-                self.table.setItem(row, 2, QTableWidgetItem(display_name))
+                name_item = QTableWidgetItem(display_name)
+                name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 3, name_item)
 
-                # Fechas con verificación
+                # Fechas
                 start_date = task.get('start_date', '')
                 end_date = task.get('end_date', '')
-
                 if not start_date:
                     start_date = "N/A"
                 if not end_date:
                     end_date = "N/A"
 
-                self.table.setItem(row, 3, QTableWidgetItem(str(start_date)))
-                self.table.setItem(row, 4, QTableWidgetItem(str(end_date)))
+                start_item = QTableWidgetItem(str(start_date))
+                start_item.setFlags(start_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 4, start_item)
 
-                # Archivo fuente
-                self.table.setItem(row, 5, QTableWidgetItem(self.source_file))
+                end_item = QTableWidgetItem(str(end_date))
+                end_item.setFlags(end_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 5, end_item)
 
             except Exception as e:
                 print(f"Error al procesar tarea {row}: {str(e)}")
@@ -393,9 +421,9 @@ class MainWindow(QMainWindow):
         visible_tasks = 0
 
         for row in range(self.table.rowCount()):
-            task_name = self.table.item(row, 2).text()
+            task_name = self.table.item(row, 3).text()  # Cambiar índice de 2 a 3
             normalized_task_name = normalize_string(task_name)
-            if self.table.item(row, 1).text() == "":  # Omitir si no hay ID
+            if self.table.item(row, 2).text() == "":  # Cambiar índice de 1 a 2
                 self.table.setRowHidden(row, True)
                 continue
 
@@ -411,10 +439,24 @@ class MainWindow(QMainWindow):
 
         self.update_task_counter(visible_tasks)
 
-    def update_task_counter(self, count=None):
-        if count is None:
-            count = self.table.rowCount()
-        self.task_counter.setText(f"Tareas encontradas: {count}")
+    def on_item_changed(self, item):
+        # Solo actualizar si el cambio fue en la columna de selección
+        if item.column() == 0:
+            self.update_task_counter()
+
+    def update_task_counter(self, visible_count=None):
+        if visible_count is None:
+            visible_count = sum(1 for row in range(self.table.rowCount())
+                          if not self.table.isRowHidden(row))
+
+        # Contar tareas seleccionadas
+        selected_count = sum(1 for row in range(self.table.rowCount())
+                        if not self.table.isRowHidden(row)
+                        and self.table.item(row, 0)
+                        and self.table.item(row, 0).checkState() == Qt.CheckState.Checked)
+
+        file_name = os.path.basename(self.source_file) if self.source_file else "Ningún archivo cargado"
+        self.task_counter.setText(f"Archivo: {file_name}    |    Tareas encontradas: {selected_count}/{visible_count}")
 
     def save_filter(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Guardar Filtro", "", "Archivos de Filtro (*.ft)")
@@ -480,18 +522,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        visible_tasks_count = sum(1 for row in range(self.table.rowCount())
-                                if not self.table.isRowHidden(row))
-
-        if visible_tasks_count == 0:
-            QMessageBox.warning(
-                self,
-                "Sin tareas",
-                "No hay tareas visibles para agregar. Ajuste los filtros si es necesario."
-            )
-            return
-
-        # Si no hay color seleccionado, mostrar diálogo
+        # Verificación del color...
         if self.selected_color is None:
             reply = QMessageBox.question(
                 self,
@@ -507,26 +538,59 @@ class MainWindow(QMainWindow):
                 self.select_color()
                 return
 
-        # Obtener solo las tareas visibles (no filtradas)
-        visible_tasks = []
-        for row in range(self.table.rowCount()):
-            if not self.table.isRowHidden(row):
-                task_data = {
-                    'name': self.table.item(row, 2).text().strip(),
-                    'start_date': self.table.item(row, 3).text().strip(),
-                    'end_date': self.table.item(row, 4).text().strip(),
-                    'color': self.selected_color.name()
-                }
-                visible_tasks.append(task_data)
+        final_tasks = []
+        task_hierarchy = {}
+        current_parent = None
 
-        # Emitir señal con las tareas visibles y el color seleccionado
-        if visible_tasks:
-                self.tasks_imported.emit(visible_tasks)
-                QMessageBox.information(
-                    self,
-                    "Tareas agregadas",
-                    f"Se han agregado {len(visible_tasks)} tareas al canvas."
-                )
+        # Primera pasada: crear diccionario de jerarquía
+        for row in range(self.table.rowCount()):
+            if (not self.table.isRowHidden(row) and
+                self.table.item(row, 0).checkState() == Qt.CheckState.Checked):
+
+                level = self.table.item(row, 2).text().strip() # Nivel
+                name = self.table.item(row, 3).text().strip()
+                start_date = self.table.item(row, 4).text().strip()
+                end_date = self.table.item(row, 5).text().strip()
+
+                task_data = {
+                    'name': name,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'color': self.selected_color.name(),
+                    'level': level,
+                    'parent_task': None,
+                    'is_subtask': False
+                }
+
+                # Determinar si es subtarea basado en el nivel
+                if '.' in level: # Por ejemplo: "1.1", "2.1", etc.
+                    parent_level = level.rsplit('.', 1)[0]
+                    task_data['is_subtask'] = True
+                    if parent_level in task_hierarchy:
+                        task_data['parent_task'] = task_hierarchy[parent_level]['name']
+                else:
+                    task_hierarchy[level] = task_data
+
+                final_tasks.append(task_data)
+
+        if not final_tasks:
+            QMessageBox.warning(
+                self,
+                "Sin tareas",
+                "No hay tareas seleccionadas para agregar. Por favor, seleccione al menos una tarea."
+            )
+            return
+
+        # Mostrar animación y emitir señal
+        self.show_loading(True)
+        self.tasks_imported.emit(final_tasks)
+        QThread.msleep(50)
+        self.show_loading(False)
+        QMessageBox.information(
+            self,
+            "Tareas agregadas",
+            f"Se han agregado {len(final_tasks)} tareas al canvas."
+        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

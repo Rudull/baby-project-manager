@@ -1,23 +1,23 @@
 ## Road Map
 
 1. Cuaando se selecciona una tarea que tiene hipervinculos, se pierde el formato de y dejan de fuecionar
-2. Al seleccionar Nuevo no se crea un archivo nuevo para iniciar un listado de tareas
-3. Las notas deberias podersne copiar facilmente a una barra de tareas diferente
-4. Implementar filtro al diagrama de Gantt
-5. Una tarea deberia poderse convestir en subtarea
-6. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
-7. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
-8. Implementar importasion de archivos .pdf, .xlsx y *.ppm
-9. Implementar que la tarea padre sea la superoposicion de las subtareas
-10. Implementar dias de escepsion
-11. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
-12. El scroll debe poder fuecionar sobre el diagrama de Gantt
-13. Implementar rodar tarea
-14. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-15. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
-16. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
-17. Implementar arrastrar y soltar
-18. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+2. Las notas deberias podersne copiar facilmente a una barra de tareas diferente
+3. Implementar filtro al diagrama de Gantt
+4. Una tarea deberia poderse convestir en subtarea
+5. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
+6. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
+7. Implementar que la tarea padre sea la superoposicion de las subtareas
+8. Implementar dias de escepsion
+9. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
+10. El scroll debe poder fuecionar sobre el diagrama de Gantt
+11. Implementar rodar tarea
+12. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+13. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
+14. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
+15. Implementar arrastrar y soltar
+16. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+17. Implementar CTR+Z y CTR+Y
+19. Dividir baby.py en partes mas pequeñas
 
 QTableWidget por QAbstractTableModel junto con QTableView
 
@@ -97,74 +97,3 @@ Estructura de Archivos Propuesta:
     8. **Módulo Principal (main.py)**
        - Punto de entrada de la aplicación
        - Configuración inicial
-
-
-Implementar arrastrar y soltar tareas en un programa de administración de tareas con una interfaz gráfica en PySide6 es completamente factible. Esto se puede lograr sobreescribiendo ciertos métodos de eventos en las clases del widget correspondiente. A continuación, desglosaré los pasos para implementar esta funcionalidad en el código que compartiste:
-
-Pseudocódigo para implementar "Arrastrar y Soltar"
-Habilitar el soporte de arrastre:
-
-En la clase TaskTableWidget:
-Habilitar el evento de arrastre para las filas.
-Modificar el comportamiento al presionar el ratón para iniciar el arrastre.
-Definir el evento de inicio de arrastre:
-
-mousePressEvent: Registrar qué tarea se está arrastrando (el índice de la fila).
-Definir el evento de movimiento del ratón:
-
-mouseMoveEvent: Ejecutar el arrastre gráfico mientras el ratón se mueve si se mantiene presionado el botón izquierdo del ratón.
-Definir el evento de finalización de arrastre:
-
-dropEvent: Colocar la tarea en la nueva fila seleccionada.
-Actualizar la tabla de tareas y el gráfico de Gantt.
-Implementación en el código
-A continuación se presenta la implementación de las partes relevantes en el código para habilitar la funcionalidad de "Arrastrar y Soltar". Solo se mostrarán las secciones que necesitan ser modificadas y agregadas para esta funcionalidad.
-
-Modificaciones en TaskTableWidget
-class TaskTableWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.main_window = parent
-        self.current_drag_index = -1  # Para establecer el índice de arrastre
-
-        # ... (resto del constructor)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.current_drag_index = self.task_table.indexAt(event.pos()).row()  # Obtener índice de la tarea
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and self.current_drag_index >= 0:
-            mime_data = QMimeData()
-            drag = QDrag(self)
-            drag.setMimeData(mime_data)
-            drag.setHotSpot(event.pos() - self.task_table.viewport().pos())
-            drag.exec(Qt.MoveAction)
-
-    def dropEvent(self, event):
-        if event.source() == self:
-            drop_index = self.task_table.indexAt(event.pos()).row()
-            if drop_index != self.current_drag_index and self.current_drag_index >= 0:
-                # Mover la tarea de un índice a otro
-                task_data = self.retrieve_task_data(self.current_drag_index)
-                self.task_table.removeRow(self.current_drag_index)  # Eliminar tarea original
-                self.task_table.insertRow(drop_index)  # Insertar en la nueva posición
-                self.add_task_to_table(task_data, editable=True)  # Agregar tarea de nuevo en la nueva ubicación
-
-                self.unsaved_changes = True
-                self.main_window.update_gantt_chart()  # Actualizar el gráfico de Gantt
-
-        event.acceptProposedAction()
-
-    def retrieve_task_data(self, row):
-        return {
-            'NAME': self.task_table.item(row, 1).text(),
-            'START': self.task_table.cellWidget(row, 2).date().toString("dd/MM/yyyy"),
-            'END': self.task_table.cellWidget(row, 3).date().toString("dd/MM/yyyy"),
-            'DURATION': self.task_table.cellWidget(row, 4).text(),
-            'DEDICATION': self.task_table.cellWidget(row, 5).text()
-        }
-Explicación de los cambios:
-mousePressEvent: Captura cuál fila se ha comenzado a arrastrar.
-mouseMoveEvent: Si se mantiene presionado el botón del ratón, se inicia el proceso de arrastre.
-dropEvent: Maneja la lógica para mover la tarea del índice de la fila arrastrada al índice de la fila donde se suelta.
