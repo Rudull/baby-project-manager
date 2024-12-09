@@ -1,5 +1,5 @@
 #file_gui.py
-#12
+#15
 import sys
 import os
 import platform
@@ -19,6 +19,8 @@ from filter_util import normalize_string, is_start_end_task
 import re
 from loading_animation_widget import LoadingAnimationWidget
 from jvm_manager import JVMManager
+from pdf_security_checker import check_pdf_restrictions
+from xlsx_security_checker import check_xlsx_restrictions
 
 class MPPLoaderThread(QThread):
     tasks_extracted = Signal(list, list)
@@ -30,7 +32,7 @@ class MPPLoaderThread(QThread):
     def format_outline_number(self, task):
         """Genera el número de esquema jerárquico para una tarea"""
         outline_number = task.getOutlineNumber()
-        if outline_number is not None:
+        if (outline_number is not None):
             return str(outline_number)
         return ''
 
@@ -312,6 +314,18 @@ class MainWindow(QMainWindow):
 
         file_name, _ = QFileDialog.getOpenFileName(self, "Abrir Archivo", "", file_filter)
         if file_name:
+            if file_type == 'pdf':
+                # Verificar restricciones
+                restriction_message = check_pdf_restrictions(file_name)
+                if restriction_message:
+                    QMessageBox.warning(self, "Restricción en PDF", restriction_message)
+                    return
+            elif file_type == 'xlsx':
+                # Verificar restricciones antes de continuar
+                restriction_message = check_xlsx_restrictions(file_name)
+                if restriction_message:
+                    QMessageBox.warning(self, "Restricción detectada", restriction_message)
+                    return
             self.source_file = file_name
             self.reset_color_selection()
             self.show_loading(True)
@@ -339,13 +353,22 @@ class MainWindow(QMainWindow):
 
     def on_tasks_extracted(self, tasks, task_tree):
         """Solo cargar las tareas en la tabla, sin emitir la señal de importación"""
-        self.tasks = tasks
-        self.task_tree = task_tree
-        self.populate_table()
         self.show_loading(False)
         self.load_pdf_button.setEnabled(True)
         self.load_mpp_button.setEnabled(True)
         self.load_xlsx_button.setEnabled(True)
+
+        if not tasks:
+            QMessageBox.warning(
+                self,
+                "Error al extraer tareas",
+                "No se han podido extraer tareas. El PDF puede no corresponder a un cronograma válido o fue creado con restricciones de privacidad."
+            )
+            return
+
+        self.tasks = tasks
+        self.task_tree = task_tree
+        self.populate_table()
 
     def show_loading(self, show):
         if show:

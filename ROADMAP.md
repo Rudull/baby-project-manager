@@ -48,6 +48,8 @@ pip install PySide6
 pip install workalendar
 pip install mpxj
 pip install JPype1
+pip install pycryptodome
+pip install PyPDF2
 
 Estructura de Archivos Propuesta:
 
