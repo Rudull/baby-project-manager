@@ -1,5 +1,5 @@
 #file_gui.py
-#15
+#16
 import sys
 import os
 import platform
@@ -563,9 +563,8 @@ class MainWindow(QMainWindow):
 
         final_tasks = []
         task_hierarchy = {}
-        current_parent = None
 
-        # Primera pasada: crear diccionario de jerarquía
+        # Primera pasada: crear un listado de tareas principales
         for row in range(self.table.rowCount()):
             if (not self.table.isRowHidden(row) and
                 self.table.item(row, 0).checkState() == Qt.CheckState.Checked):
@@ -582,17 +581,10 @@ class MainWindow(QMainWindow):
                     'color': self.selected_color.name(),
                     'level': level,
                     'parent_task': None,
-                    'is_subtask': False
+                    'is_subtask': False  # Marcar todas como tareas padre
                 }
 
-                # Determinar si es subtarea basado en el nivel
-                if '.' in level: # Por ejemplo: "1.1", "2.1", etc.
-                    parent_level = level.rsplit('.', 1)[0]
-                    task_data['is_subtask'] = True
-                    if parent_level in task_hierarchy:
-                        task_data['parent_task'] = task_hierarchy[parent_level]['name']
-                else:
-                    task_hierarchy[level] = task_data
+                task_hierarchy[level] = task_data  # Agregar la tarea al diccionario de jerarquía
 
                 final_tasks.append(task_data)
 

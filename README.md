@@ -27,6 +27,8 @@ Baby Project Manager is a simple and effective project management application de
     - openpyxl
     - pandas
     - workalendar
+    - pycryptodome
+    - PyPDF2
 
 ## Installation
 
