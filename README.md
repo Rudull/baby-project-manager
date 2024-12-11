@@ -8,7 +8,7 @@ Baby Project Manager is a simple and effective project management application de
 
 - **Task Management**: Create, edit, delete, and duplicate tasks, including subtasks.  Tasks can be visually organized with hierarchical indentation and customizable colors.
 - **Gantt Charts**: Interactive Gantt chart visualization of scheduled tasks with support for zooming and scrolling.
-- **File Support**: Import and export tasks from and to `.bpm`, `.xlsx`, and `.pdf` files.  The application uses a custom `.bpm` format for efficient data storage.
+- **File Support**: Import and export tasks from and to `.mpp`, `.xlsx`, and `.pdf` files.  The application uses a custom `.bpm` format for efficient data storage.
 - **Filtering and Search**: Filter and search tasks by keywords, including and excluding specific terms.
 - **Drag and Drop**: Drag and drop functionality for reordering tasks.
 - **User-Friendly Interface**: Intuitive graphical interface based on PySide6.
@@ -57,12 +57,49 @@ pip install -r requirements.txt
 ## File Structure
 
 ```plaintext
-baby-project-manager/
-├── docs/                  # Documentation
-├── src/                   # Source code of the application
-├── tests/                 # Test files
-└── ...
-```
+├── main_window.py
+│   └── MainWindow: "Ventana principal de la aplicación."
+├── delegates.py
+│   ├── LineEditDelegate: "Delegate para editar celdas con QLineEdit."
+│   ├── DateEditDelegate: "Delegate para editar celdas con QDateEdit."
+│   ├── SpinBoxDelegate: "Delegate para editar celdas con QSpinBox."
+│   └── StateButtonDelegate: "Delegate para mostrar botones de estado en celdas."
+├── gantt_views.py
+│   ├── GanttHeaderView: "Vista del encabezado del diagrama de Gantt."
+│   ├── GanttChart: "Widget que dibuja el gráfico de Gantt."
+│   ├── GanttWidget: "Widget contenedor del encabezado y el gráfico de Gantt."
+│   └── FloatingTaskMenu: "Menú flotante para editar notas de una tarea."
+├── models.py
+│   ├── Task: "Clase que representa una tarea."
+│   └── TaskTableModel: "Modelo para la tabla de tareas."
+├── hipervinculo.py
+│   ├── HyperlinkTextEdit: "QTextEdit que maneja hipervínculos."
+│   └── NotesApp: "Aplicación de ejemplo que usa HyperlinkTextEdit."
+├── file_gui.py
+│   ├── MPPLoaderThread: "Hilo para cargar y extraer tareas de archivos MPP."
+│   ├── XLSXLoaderThread: "Hilo para cargar y extraer tareas de archivos XLSX."
+│   └── MainWindow: "Ventana principal para la carga y filtro de archivos."
+├── loading_animation_widget.py
+│   └── LoadingAnimationWidget: "Widget para mostrar una animación de carga."
+├── filter_util.py
+│   ├── normalize_string: "Función para normalizar strings (quitar acentos y minúsculas)."
+│   ├── is_start_end_task: "Función para identificar tareas de inicio o fin."
+│   └── filter_tasks: "Función para filtrar una lista de tareas por términos."
+├── jvm_manager.py
+│   └── JVMManager: "Clase singleton para gestionar el ciclo de vida de la JVM."
+├── table_views.py
+│   └── TaskTableWidget: "Widget para la tabla de tareas."
+├── mpp_extractor.py
+│   └── MPPReader: "Clase para extraer datos de archivos MPP."
+├── pdf_extractor.py
+│   ├── TaskTreeNode: "Clase para representar un nodo en el árbol de tareas."
+│   └── PDFLoaderThread: "Hilo para cargar y extraer tareas de archivos PDF."
+├── pdf_security_checker.py
+│   └── check_pdf_restrictions: "Función para verificar restricciones de seguridad en PDFs."
+├── xlsx_extractor.py
+│   └── XLSXReader: "Clase para extraer datos de archivos XLSX."
+└── xlsx_security_checker.py
+    └── check_xlsx_restrictions: "Función para verificar restricciones de seguridad en archivos XLSX."
 
 ## Usage
 

@@ -1,5 +1,5 @@
 # delegates.py
-
+#1
 from PySide6.QtWidgets import QStyledItemDelegate, QLineEdit, QDateEdit, QSpinBox
 from PySide6.QtCore import Qt, QDate, QEvent
 from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont
