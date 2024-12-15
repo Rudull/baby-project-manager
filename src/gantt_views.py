@@ -600,6 +600,8 @@ class FloatingTaskMenu(QWidget):
             layout.addWidget(label)
 
         self.notes_edit = HyperlinkTextEdit(self)
+        self.notes_edit.setAcceptRichText(True)
+        self.notes_edit.hyperlink_format.setForeground(self.notes_edit.palette().link())
 
         # Validación añadida
         if isinstance(self.task.notes_html, str):

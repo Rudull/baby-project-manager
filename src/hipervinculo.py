@@ -58,30 +58,32 @@ class HyperlinkTextEdit(QTextEdit):
 
     def update_existing_text_formats(self):
         self.document().blockSignals(True)
-        cursor = QTextCursor(self.document())
-        cursor.movePosition(QTextCursor.MoveOperation.Start)
-        while not cursor.atEnd():
-            block = cursor.block()
-            block_text = block.text().strip()
 
-            format_applied = False
-            for link in self.file_links.keys():
-                if link in block_text:
-                    start = block_text.index(link)
-                    cursor.setPosition(block.position() + start)
-                    cursor.setPosition(block.position() + start + len(link),
-                                    QTextCursor.MoveMode.KeepAnchor)
-                    cursor.setCharFormat(self.hyperlink_format)
-                    format_applied = True
+        # Guardar la selección actual
+        cursor = self.textCursor()
+        saved_selection = (cursor.selectionStart(), cursor.selectionEnd())
+
+        # Aplicar formato normal a todo el documento
+        doc_cursor = QTextCursor(self.document())
+        doc_cursor.select(QTextCursor.SelectionType.Document)
+        doc_cursor.setCharFormat(self.normal_format)
+
+        # Restaurar hipervínculos
+        for link in self.file_links.keys():
+            cursor = QTextCursor(self.document())
+            while True:
+                # Buscar la siguiente ocurrencia del hipervínculo
+                cursor = self.document().find(link, cursor)
+                if cursor.isNull():
                     break
+                cursor.setCharFormat(self.hyperlink_format)
 
-            if not format_applied:
-                cursor.setPosition(block.position())
-                cursor.setPosition(block.position() + block.length() - 1,
-                                QTextCursor.MoveMode.KeepAnchor)
-                cursor.setCharFormat(self.normal_format)
-
-            cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+        # Restaurar la selección original
+        restore_cursor = self.textCursor()
+        restore_cursor.setPosition(saved_selection[0])
+        restore_cursor.setPosition(saved_selection[1],
+                                 QTextCursor.MoveMode.KeepAnchor)
+        self.setTextCursor(restore_cursor)
 
         self.document().blockSignals(False)
 
@@ -98,6 +100,15 @@ class HyperlinkTextEdit(QTextEdit):
         super().mouseDoubleClickEvent(e)
 
     def mouseMoveEvent(self, e):
+        # Manejar la selección durante el arrastre
+        super().mouseMoveEvent(e)
+        if e.buttons() & Qt.MouseButton.LeftButton:  # Si está arrastrando con botón izquierdo
+            cursor = self.textCursor()
+            if cursor.hasSelection():
+                # Preservar el formato original mientras se arrastra
+                self.update_selection_formats(cursor)
+                return
+
         cursor = self.cursorForPosition(e.pos())
         block = cursor.block()
         block_text = block.text().strip()
@@ -123,7 +134,37 @@ class HyperlinkTextEdit(QTextEdit):
                 self.last_cursor = Qt.CursorShape.IBeamCursor
             self.setToolTip("")
 
-        super().mouseMoveEvent(e)
+    def update_selection_formats(self, cursor):
+        if not cursor.hasSelection():
+            return
+
+        # Guardar la posición actual
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # Restaurar formato normal
+        restore_cursor = QTextCursor(self.document())
+        restore_cursor.setPosition(start)
+        restore_cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+        restore_cursor.setCharFormat(self.normal_format)
+
+        # Restaurar hipervínculos
+        selected_text = restore_cursor.selectedText()
+        for link in self.file_links.keys():
+            pos = 0
+            while True:
+                pos = selected_text.find(link, pos)
+                if pos == -1:
+                    break
+
+                link_cursor = QTextCursor(self.document())
+                absolute_pos = start + pos
+                link_cursor.setPosition(absolute_pos)
+                link_cursor.setPosition(absolute_pos + len(link),
+                                     QTextCursor.MoveMode.KeepAnchor)
+                link_cursor.setCharFormat(self.hyperlink_format)
+
+                pos += len(link)
 
     def leaveEvent(self, event):
         self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
@@ -151,8 +192,61 @@ class HyperlinkTextEdit(QTextEdit):
         self.update_existing_text_formats()
 
     def keyPressEvent(self, e):
-        super().keyPressEvent(e)
-        self.setCurrentCharFormat(self.normal_format)
+        if e.key() == Qt.Key.Key_Escape:
+            # Obtener la selección actual antes de procesar el escape
+            cursor = self.textCursor()
+            if cursor.hasSelection():
+                # Guardar las posiciones de la selección
+                start = cursor.selectionStart()
+                end = cursor.selectionEnd()
+
+                # Llamar al evento original
+                super().keyPressEvent(e)
+
+                # Restaurar los formatos después del escape
+                self.update_selection_formats(QTextCursor(self.document()))
+        else:
+            super().keyPressEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        super().mouseReleaseEvent(e)
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            # Obtener el texto y los formatos actuales
+            start = cursor.selectionStart()
+            end = cursor.selectionEnd()
+
+            # Restaurar los formatos originales
+            temp_cursor = QTextCursor(self.document())
+            temp_cursor.setPosition(start)
+            temp_cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+
+            # Primero aplicar formato normal a toda la selección
+            temp_cursor.setCharFormat(self.normal_format)
+
+            # Luego restaurar los hipervínculos solo donde corresponde
+            for link in self.file_links.keys():
+                # Buscar todas las ocurrencias del hipervínculo en la selección
+                text = temp_cursor.selectedText()
+                link_start = 0
+                while True:
+                    link_pos = text.find(link, link_start)
+                    if link_pos == -1:
+                        break
+
+                    # Aplicar formato de hipervínculo solo al texto del enlace
+                    link_cursor = QTextCursor(self.document())
+                    absolute_pos = start + link_pos
+                    link_cursor.setPosition(absolute_pos)
+                    link_cursor.setPosition(absolute_pos + len(link),
+                                         QTextCursor.MoveMode.KeepAnchor)
+                    link_cursor.setCharFormat(self.hyperlink_format)
+
+                    link_start = link_pos + len(link)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self.update_existing_text_formats()
 
 class NotesApp(QMainWindow):
     def __init__(self):

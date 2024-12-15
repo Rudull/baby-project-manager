@@ -129,7 +129,7 @@ class StateButtonDelegate(QStyledItemDelegate):
         if not task:
             return
 
-        color = QColor(34, 151, 153)
+        color = task.color if task.color else QColor(34, 151, 153)
         painter.setBrush(QBrush(color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRect(option.rect)
