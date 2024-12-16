@@ -577,6 +577,8 @@ class GanttWidget(QWidget):
 
 class FloatingTaskMenu(QWidget):
     notesChanged = Signal()
+    notesCopied = Signal(object)
+    notesPasted = Signal()
 
     def __init__(self, task, parent=None):
         super().__init__(parent)
@@ -653,9 +655,15 @@ class FloatingTaskMenu(QWidget):
 
     def update_task_notes(self):
         if self.task.notes_html != self.notes_edit.toHtml():
-            self.task.notes_html = self.notes_edit.toHtml()
-            self.task.notes = self.notes_edit.toPlainText()
-            self.task.file_links = self.notes_edit.file_links
+            # Actualizar solo si hay cambios
+            current_html = self.notes_edit.toHtml()
+            current_text = self.notes_edit.toPlainText()
+            current_links = self.notes_edit.file_links.copy()
+
+            self.task.notes_html = current_html
+            self.task.notes = current_text
+            self.task.file_links = current_links
+
             self.notesChanged.emit()
             self.is_editing = True
 
@@ -690,6 +698,8 @@ class FloatingTaskMenu(QWidget):
         self.is_editing = not self.is_editing
 
     def keyPressEvent(self, event):
+        if self.notes_edit.hasFocus():
+            return
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         else:
@@ -734,3 +744,13 @@ class FloatingTaskMenu(QWidget):
                 QMessageBox.warning(self, "Error", "No se pudo encontrar el archivo.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"No se pudo abrir el archivo: {str(e)}")
+
+    def copy_selected_text(self):
+        if self.notes_edit.textCursor().hasSelection():
+            self.notes_edit.copy()
+            self.notesCopied.emit(self.task)
+
+    def paste_text(self):
+        if self.notes_edit.canPaste():
+            self.notes_edit.paste()
+            self.notesPasted.emit()

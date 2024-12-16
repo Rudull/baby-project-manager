@@ -53,6 +53,27 @@ class Task:
         for subtask in self.subtasks:
             subtask.parent_task = self
 
+    def copy_notes_from(self, other_task):
+        # Modificar el método para concatenar las notas
+        if other_task.notes_html:
+            # Concatenar el HTML de las notas
+            if self.notes_html:
+                self.notes_html = other_task.notes_html + "<br><br>" + self.notes_html
+            else:
+                self.notes_html = other_task.notes_html
+
+        if other_task.notes:
+            # Concatenar el texto plano
+            if self.notes:
+                self.notes = other_task.notes + "\n\n" + self.notes
+            else:
+                self.notes = other_task.notes
+
+        # Combinar los file_links
+        for key, value in other_task.file_links.items():
+            if key not in self.file_links:
+                self.file_links[key] = value
+
 class TaskTableModel(QAbstractTableModel):
     def __init__(self, tasks=None):
         super(TaskTableModel, self).__init__()

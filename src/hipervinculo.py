@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import (
     QFont, QColor, QPalette, QTextCursor, QTextCharFormat,
-    QTextBlockFormat, QTextOption
+    QTextBlockFormat, QTextOption, QKeySequence, QShortcut
 )
 from PySide6.QtCore import Qt, Signal, QEvent
 
@@ -21,13 +21,34 @@ class HyperlinkTextEdit(QTextEdit):
         self.hyperlink_format = QTextCharFormat()
         self.normal_format = QTextCharFormat()
         self.file_links = {}
-        # Configurar el ajuste de línea usando la constante correcta
-        self.setWordWrapMode(QTextOption.WordWrap)  # Cambiado a usar WordWrap
+        self.setWordWrapMode(QTextOption.WordWrap)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.update_colors()
         self.setMouseTracking(True)
         self.last_cursor = None
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+
+    def keyPressEvent(self, event):
+        # Solo mantener los atajos básicos Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A
+        modifiers = event.modifiers()
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            if event.key() == Qt.Key.Key_C:
+                self.copy()
+                event.accept()
+                return
+            elif event.key() == Qt.Key.Key_V:
+                self.paste()
+                event.accept()
+                return
+            elif event.key() == Qt.Key.Key_X:
+                self.cut()
+                event.accept()
+                return
+            elif event.key() == Qt.Key.Key_A:
+                self.selectAll()
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def update_colors(self):
         palette = self.palette()
@@ -190,59 +211,6 @@ class HyperlinkTextEdit(QTextEdit):
         self.setTextCursor(cursor)
         self.setCurrentCharFormat(self.normal_format)
         self.update_existing_text_formats()
-
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key.Key_Escape:
-            # Obtener la selección actual antes de procesar el escape
-            cursor = self.textCursor()
-            if cursor.hasSelection():
-                # Guardar las posiciones de la selección
-                start = cursor.selectionStart()
-                end = cursor.selectionEnd()
-
-                # Llamar al evento original
-                super().keyPressEvent(e)
-
-                # Restaurar los formatos después del escape
-                self.update_selection_formats(QTextCursor(self.document()))
-        else:
-            super().keyPressEvent(e)
-
-    def mouseReleaseEvent(self, e):
-        super().mouseReleaseEvent(e)
-        cursor = self.textCursor()
-        if cursor.hasSelection():
-            # Obtener el texto y los formatos actuales
-            start = cursor.selectionStart()
-            end = cursor.selectionEnd()
-
-            # Restaurar los formatos originales
-            temp_cursor = QTextCursor(self.document())
-            temp_cursor.setPosition(start)
-            temp_cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
-
-            # Primero aplicar formato normal a toda la selección
-            temp_cursor.setCharFormat(self.normal_format)
-
-            # Luego restaurar los hipervínculos solo donde corresponde
-            for link in self.file_links.keys():
-                # Buscar todas las ocurrencias del hipervínculo en la selección
-                text = temp_cursor.selectedText()
-                link_start = 0
-                while True:
-                    link_pos = text.find(link, link_start)
-                    if link_pos == -1:
-                        break
-
-                    # Aplicar formato de hipervínculo solo al texto del enlace
-                    link_cursor = QTextCursor(self.document())
-                    absolute_pos = start + link_pos
-                    link_cursor.setPosition(absolute_pos)
-                    link_cursor.setPosition(absolute_pos + len(link),
-                                         QTextCursor.MoveMode.KeepAnchor)
-                    link_cursor.setCharFormat(self.hyperlink_format)
-
-                    link_start = link_pos + len(link)
 
     def focusOutEvent(self, e):
         super().focusOutEvent(e)

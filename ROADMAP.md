@@ -1,7 +1,7 @@
 ## Road Map
 
-1. Cuaando se selecciona una tarea que tiene hipervinculos, se pierde el formato de y dejan de fuecionar
-2. Las notas deberias podersne copiar facilmente a una barra de tareas diferente
+1.
+2. Al importar tareas al diagrama de Gantt o Canva deberia agregaras una nota con ID de la tarea
 3. Implementar filtro al diagrama de Gantt
 4. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
 5. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas

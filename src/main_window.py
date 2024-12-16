@@ -17,7 +17,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import (
     QColor, QKeySequence, QShortcut, QWheelEvent
 )
-from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtCore import (
+    Qt, QDate, QTimer, Signal, QModelIndex, QEvent
+)
 
 from gantt_views import GanttWidget
 from models import Task, TaskTableModel
@@ -106,16 +108,24 @@ class MainWindow(QMainWindow):
 
         self.update_gantt_chart()
 
-        from PySide6.QtGui import QKeySequence, QShortcut
+        self.set_unsaved_changes(False)
 
         # Atajo de teclado para guardar
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.quick_save)
 
-        self.set_unsaved_changes(False)
+        # Instalar el filtro de eventos al final del __init__
+        self.installEventFilter(self)
 
-        # Inicializar el scrollbar compartido
-        QTimer.singleShot(0, self.initialize_shared_scrollbar)
+    def copy_current_notes(self):
+        pass  # Método vacío
+
+    def paste_to_current_notes(self):
+        pass  # Método vacío
+
+    def copy_task_notes(self, from_task, to_task):
+        # Usar el método modificado de la clase Task
+        to_task.copy_notes_from(from_task)
 
     def initialize_shared_scrollbar(self):
         self.update_shared_scrollbar_range()
@@ -331,6 +341,10 @@ class MainWindow(QMainWindow):
             convert_to_parent_action = menu.addAction("Convertir en tarea padre")
         delete_action = menu.addAction("Eliminar")
         reset_color_action = menu.addAction("Color por defecto")
+        menu.addSeparator()
+        copy_notes_action = menu.addAction("Copiar notas")
+        paste_notes_action = menu.addAction("Pegar notas")
+        paste_notes_action.setEnabled(hasattr(self, '_copied_notes'))
 
         action = menu.exec(global_pos)
 
@@ -361,6 +375,12 @@ class MainWindow(QMainWindow):
             self.delete_task(task_index)
         elif action_text == "Color por defecto":
             self.reset_task_color(task_index)
+        elif action_text == "Copiar notas":
+            self._copied_notes = task
+        elif action_text == "Pegar notas":
+            if hasattr(self, '_copied_notes') and self._copied_notes:
+                task.copy_notes_from(self._copied_notes)
+                self.set_unsaved_changes(True)
 
     def duplicate_task(self, row):
         model = self.model
@@ -388,8 +408,8 @@ class MainWindow(QMainWindow):
                         dedication=task_data.get('DEDICATION'),
                         color=QColor(task_data.get('COLOR')),
                         notes=task_data.get('NOTES', ''),
-                        notes_html="",  # Si es necesario, ajustar este valor
-                        file_links={}   # Si es necesario, ajustar este valor
+                        notes_html=task.notes_html,
+                        file_links=task.file_links.copy()
                     )
                     duplicated_task.is_subtask = task.is_subtask
                     duplicated_task.parent_task = task.parent_task
@@ -428,8 +448,8 @@ class MainWindow(QMainWindow):
                                     dedication=subtask_data.get('DEDICATION'),
                                     color=QColor(subtask_data.get('COLOR')),
                                     notes=subtask_data.get('NOTES', ''),
-                                    notes_html="",  # Si es necesario, ajustar este valor
-                                    file_links={}   # Si es necesario, ajustar este valor
+                                    notes_html=subtask.notes_html,
+                                    file_links=subtask.file_links.copy()
                                 )
                                 duplicated_subtask.is_subtask = True
                                 duplicated_subtask.parent_task = duplicated_task
