@@ -1,4 +1,4 @@
-```
+```gitignore
 __pycache__/
 *.pyc
 *.ft
@@ -6,4 +6,8 @@ __pycache__/
 *.mpp
 *.xlsx
 *.pdf
+
+# Ignorar carpetas de compilación
+build_windows/
+dist_linux/
 ```

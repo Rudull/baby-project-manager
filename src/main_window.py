@@ -24,6 +24,7 @@ from PySide6.QtCore import (
 from gantt_views import GanttWidget
 from models import Task, TaskTableModel
 from table_views import TaskTableWidget
+from about_dialog import AboutDialog
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
@@ -1091,6 +1092,10 @@ class MainWindow(QMainWindow):
             print("No task to highlight")
         self.gantt_chart.highlighted_task_index = task_index
         self.gantt_chart.update()
+
+    def show_about_dialog(self):
+        about_dialog = AboutDialog(self)
+        about_dialog.exec()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

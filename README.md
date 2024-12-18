@@ -2,7 +2,7 @@
 
 ## Description
 
-Baby Project Manager is a simple and effective project management application designed to help users manage tasks and create Gantt charts. It allows users to organize, visualize, and schedule tasks in an intuitive and easy-to-use manner.  It supports importing and exporting data from various file formats, including `.bpm`, `.xlsx`, and `.pdf`.
+Baby Project Manager is a simple and effective project management application designed to help users manage tasks and create Gantt charts. It allows organizing, visualizing, and scheduling tasks in an intuitive and user-friendly way. It supports data import and export from various file formats, including `.bpm`, `.xlsx`, `.mpp`, and `.pdf`.
 
 ## Features
 
@@ -14,6 +14,35 @@ Baby Project Manager is a simple and effective project management application de
 - **User-Friendly Interface**: Intuitive graphical interface based on PySide6.
 - **Hyperlink Support**: Add and manage hyperlinks within task notes.
 - **Holiday and Weekend Handling**: Accurately calculates task durations considering holidays and weekends in Colombia.
+
+## Features
+
+- **Task Management**:
+  - Create, edit, delete, and duplicate tasks and subtasks
+  - Visual organization with hierarchical indentation
+  - Customizable colors
+  - Support for notes with hyperlinks
+  - Automatic duration calculation considering working days
+
+- **Gantt Chart**:
+  - Interactive schedule visualization
+  - Mouse wheel zoom
+  - Full, yearly, semi-annual, quarterly, and monthly views
+  - Highlighted "today" line
+  - Synchronization with Colombian calendar
+
+- **File Support**:
+  - Native `.bpm` format for efficient storage
+  - Import from `.mpp`, `.xlsx`, and `.pdf`
+  - Export to various formats
+  - File security verification
+
+- **Intuitive Interface**:
+  - PySide6-based design
+  - Light/dark themes
+  - Context menus
+  - Keyboard shortcuts
+  - Multi-language support
 
 ## Requirements
 
@@ -47,7 +76,7 @@ pip install -r requirements.txt
 
   **Option 1 - Direct Installation:**
   ```bash
-  pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar
+  pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar pycryptodome PyPDF2
   ```
   **Option 2 - Using requirements.txt:**
   ```bash
@@ -108,19 +137,33 @@ pip install -r requirements.txt
    python src/baby.py
    ```
 
-2. **Add Tasks**: Use the "Add New Task" button or the context menu to add tasks and set start and end dates.
+2. Task Management:
+   - Use "Add New Task" or context menu
+   - Set start/end dates
+   - Organize with subtasks
+   - Customize colors
+   - Add notes and hyperlinks
 
-3. **View in Gantt Chart**: Tasks appear automatically in the Gantt chart. Use the mouse wheel to zoom in/out (Ctrl + mouse wheel).
+3. Gantt Chart:
+   - Zoom with Ctrl + mouse wheel
+   - Drag tasks
+   - Change time view
+   - Expand/collapse groups
 
-4. **Import and Export Data**: Use the menu options to import/export tasks.
-
-5. **Filter Tasks**: Use the search and filter functions to locate specific tasks.
+4. Files:
+   - Save in .bpm format
+   - Import from other formats
+   - Export data
 
 ## Roadmap (See `ROADMAP.md`)
 
 ## Contribution
 
 Contributions are welcome!  Please fork the repository and submit a pull request.
+
+## Créditos
+
+Developed by Rafael Hernández Bustamante
 
 ## License
 

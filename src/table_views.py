@@ -193,7 +193,8 @@ class TaskTableWidget(QWidget):
         config_menu.addAction("Abrir al iniciar el OS")
         config_menu.addAction("Alertas")
 
-        menu.addAction("Acerca de")
+        about_action = menu.addAction("Acerca de")
+        about_action.triggered.connect(self.main_window.show_about_dialog)
 
         action = menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
         if action:
