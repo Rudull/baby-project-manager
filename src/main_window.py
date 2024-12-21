@@ -1,5 +1,5 @@
 #main_window.py
-#20
+#1
 import os
 import sys
 import subprocess
@@ -25,18 +25,32 @@ from gantt_views import GanttWidget
 from models import Task, TaskTableModel
 from table_views import TaskTableWidget
 from about_dialog import AboutDialog
+from config_manager import ConfigManager
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
 
     def __init__(self):
         super().__init__()
+
+        # Inicializar el gestor de configuración
+        self.config = ConfigManager()
+
+        # Cargar geometría de la ventana
+        self.resize(
+            int(self.config.get('Window', 'width')),
+            int(self.config.get('Window', 'height'))
+        )
+        self.move(
+            int(self.config.get('Window', 'pos_x')),
+            int(self.config.get('Window', 'pos_y'))
+        )
+
         self.unsaved_changes = False
         self.base_title = "Baby project manager"
         self.setWindowTitle(self.base_title)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMinMaxButtonsHint)
         self.setMinimumSize(800, 600)  # Tamaño mínimo
-        self.setGeometry(100, 100, 1200, 800)
         self.tasks = []
         self.current_file_path = None
         self.selected_period = 365  # 1 año en días
@@ -117,6 +131,15 @@ class MainWindow(QMainWindow):
 
         # Instalar el filtro de eventos al final del __init__
         self.installEventFilter(self)
+
+        # Cargar el último archivo usado
+        QTimer.singleShot(0, self.load_last_file)
+
+    def load_last_file(self):
+        """Carga el último archivo usado si existe."""
+        last_file = self.config.get_last_file()
+        if last_file:
+            self.task_table_widget.load_tasks_from_file(last_file)
 
     def copy_current_notes(self):
         pass  # Método vacío
@@ -879,6 +902,12 @@ class MainWindow(QMainWindow):
         self.update_gantt_chart()
 
     def closeEvent(self, event):
+        # Guardar geometría de la ventana
+        self.config.set('Window', 'width', self.width())
+        self.config.set('Window', 'height', self.height())
+        self.config.set('Window', 'pos_x', self.x())
+        self.config.set('Window', 'pos_y', self.y())
+
         if self.unsaved_changes:
             reply = QMessageBox.question(
                 self, 'Cambios sin guardar',

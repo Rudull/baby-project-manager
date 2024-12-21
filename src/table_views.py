@@ -5,7 +5,8 @@
 #organiza la lógica de presentación de la tabla, sus delegados, el menú
 #contextual, los métodos de guardado/carga de archivos y la sincronización
 #con el resto de la aplicación.
-#
+#1
+import os
 import ast
 from datetime import timedelta, datetime
 from workalendar.america import Colombia
@@ -14,7 +15,7 @@ from PySide6.QtCore import Qt, QDate, QTimer, Signal, QModelIndex, QSize
 from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTableView, QPushButton, QMenu,
-    QFileDialog, QSizePolicy, QHeaderView
+    QFileDialog, QSizePolicy, QHeaderView, QMessageBox
 )
 
 from models import Task, TaskTableModel
@@ -155,6 +156,19 @@ class TaskTableWidget(QWidget):
         open_action = menu.addAction("Abrir")
         open_action.triggered.connect(self.open_file)
 
+        # Agregar submenú de archivos recientes
+        recent_menu = menu.addMenu("Archivos recientes")
+        if self.main_window:
+            recent_files = self.main_window.config.get_recent_files()
+            if recent_files:
+                for file_path in recent_files:
+                    action = recent_menu.addAction(os.path.basename(file_path))
+                    action.setData(file_path)
+                recent_menu.triggered.connect(self.open_recent_file)
+            else:
+                action = recent_menu.addAction("(No hay archivos recientes)")
+                action.setEnabled(False)
+
         add_task_action = menu.addAction("Agregar Nueva Tarea")
         add_task_action.triggered.connect(self.main_window.add_new_task)
 
@@ -216,6 +230,10 @@ class TaskTableWidget(QWidget):
     def save_file(self):
         if hasattr(self, 'current_file_path') and self.current_file_path:
             success = self.save_tasks_to_file(self.current_file_path)
+            if success:
+                self.main_window.config.update_last_directory(self.current_file_path)
+                self.main_window.config.add_recent_file(self.current_file_path)
+                self.main_window.config.set_last_file(self.current_file_path)
         else:
             success = self.save_file_as()
 
@@ -233,18 +251,40 @@ class TaskTableWidget(QWidget):
             success = self.save_tasks_to_file(file_path)
             if success:
                 self.current_file_path = file_path
-                if self.main_window:
-                    self.main_window.set_unsaved_changes(False)
+                self.main_window.config.set_last_file(file_path)
+                self.main_window.config.update_last_directory(file_path)
+                self.main_window.config.add_recent_file(file_path)
+                self.main_window.set_unsaved_changes(False)
             return success
         return False
 
     def open_file(self):
-        if self.main_window and self.main_window.check_unsaved_changes():
+        if self.main_window.check_unsaved_changes():
+            initial_dir = self.main_window.config.get('General', 'last_directory')
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "Abrir archivo", "", "Archivos BPM (*.bpm);;Todos los archivos (*)"
+                self,
+                "Abrir archivo",
+                initial_dir,
+                "Archivos BPM (*.bpm);;Todos los archivos (*)"
             )
             if file_path:
                 self.load_tasks_from_file(file_path)
+                self.main_window.config.update_last_directory(file_path)
+                self.main_window.config.add_recent_file(file_path)
+
+    def open_recent_file(self, action):
+            file_path = action.data()
+            if os.path.exists(file_path):
+                if self.main_window.check_unsaved_changes():
+                    self.load_tasks_from_file(file_path)
+                    self.main_window.config.update_last_directory(file_path)
+                    self.main_window.config.add_recent_file(file_path)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Archivo no encontrado",
+                    f"No se puede encontrar el archivo:\n{file_path}"
+                )
 
     def save_tasks_to_file(self, file_path):
         try:
@@ -368,6 +408,7 @@ class TaskTableWidget(QWidget):
             self.model.endResetModel()
             self.current_file_path = file_path
             if self.main_window:
+                self.main_window.config.set_last_file(file_path)
                 self.main_window.set_unsaved_changes(False)
                 self.main_window.update_gantt_chart()
             print(f"Archivo cargado desde: {file_path}")

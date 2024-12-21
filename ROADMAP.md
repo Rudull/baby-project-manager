@@ -1,6 +1,6 @@
 ## Road Map
 
-1. Implementar que la aplicasion recuerde la ultima carpeta de trabajo
+1. Las ventanas de notas solo se muesran en la pantalla principal cuando se tiene mas de una pantalla
 2. Ajustar bug que hace que no sea visible animacion de carga en complacion de windows
 3. Al importar tareas al diagrama de Gantt o Canva deberia agregaras una nota con ID de la tarea
 4. Implementar filtro al diagrama de Gantt

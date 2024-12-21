@@ -3,7 +3,7 @@
 #aplicación. Contiene todas las clases y widgets relacionados con la presentación
 #gráfica del cronograma, incluyendo el encabezado del Gantt, el gráfico donde se
 #representan las tareas y subtareas, así como el menú flotante de edición de notas.
-#1
+#
 import os
 import sys
 import subprocess
@@ -454,6 +454,30 @@ class GanttChart(QWidget):
                     rect = QRectF(x, y, width, self.row_height)
                     painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, "↳")
 
+                # Después de dibujar la barra, verificar si tiene notas
+                if task.notes_html and task.notes_html.strip():
+                    # Dibujar indicador de notas (pequeño círculo o ícono)
+                    note_indicator_size = 8
+                    note_x = x + width - note_indicator_size
+                    note_y = bar_y
+
+                    # Dibujar círculo amarillo
+                    painter.setPen(QPen(QColor(242, 211, 136)))  # Amarillo
+                    painter.setBrush(QBrush(QColor(242, 211, 136)))
+                    painter.drawEllipse(
+                        note_x, note_y,
+                        note_indicator_size, note_indicator_size
+                    )
+
+                    # Dibujar símbolo "N" en negro
+                    painter.setPen(QPen(Qt.black))
+                    painter.setFont(QFont("Arial", 6))
+                    painter.drawText(
+                        QRectF(note_x, note_y, note_indicator_size, note_indicator_size),
+                        Qt.AlignCenter,
+                        "N"
+                    )
+
             # Dibujar la línea del día de hoy
             today = QDate.currentDate()
             if self.min_date <= today <= self.max_date:
@@ -544,6 +568,12 @@ class GanttWidget(QWidget):
         self.chart = GanttChart(tasks, row_height, self.header.header_height, main_window)
         self.chart.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)  # Permitir expansión horizontal y vertical
         self.chart.setMouseTracking(True)
+        self.chart.setStyleSheet("""
+            QWidget {
+                font-family: Arial;
+                font-size: 10px;
+            }
+        """)
 
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)

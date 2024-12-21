@@ -5,7 +5,7 @@
 #datos subyacente. Estas clases no incluyen lógica de interfaz gráfica,
 #sino que suministran datos y funcionalidades que luego pueden ser utilizados
 #por la vista y el controlador.
-#2
+#
 from datetime import datetime, timedelta
 import ast
 
@@ -34,6 +34,10 @@ class Task:
     @property
     def formatted_name(self):
         return "       " + self.name if self.is_subtask else self.name
+
+    @property
+    def has_notes(self):
+        return bool(self.notes_html and self.notes_html.strip())
 
     def has_subtasks(self):
         return bool(self.subtasks)

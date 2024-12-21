@@ -1,4 +1,5 @@
 # about_dialog.py
+#
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
@@ -19,7 +20,7 @@ class AboutDialog(QDialog):
         # layout.addWidget(logo_label)
 
         # Versión
-        version_label = QLabel("Versión 0.1.0")
+        version_label = QLabel("Versión 0.1.1")
         version_label.setAlignment(Qt.AlignCenter)
         version_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(version_label)
