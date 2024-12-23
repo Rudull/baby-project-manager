@@ -29,7 +29,7 @@ Paso 2: Configurar la variable de entorno JAVA_HOME
 
     Encontrar la ruta de instalación del JDK:
         Por defecto, el JDK se instala en C:\Program Files\Java\jdk-XX, donde XX es la versión de Java.
-        Por ejemplo, si tienes Java 17 instalado, la ruta podría ser C:\Program Files\Java\jdk-23.
+        Por ejemplo, si tienes Java 23 instalado, la ruta podría ser C:\Program Files\Java\jdk-23.
 
     Configurar JAVA_HOME:
 
@@ -57,7 +57,7 @@ Paso 2: Configurar la variable de entorno JAVA_HOME
 
     (Ajusta la ruta según tu instalación.)
 
-c. Agregar %JAVA_HOME%\bin al PATH (opcional pero recomendado):
+c. Agregar %JAVA_HOME%\bin al PATH:
 
     En Variables del sistema, selecciona la variable Path y haz clic en Editar....
 
@@ -68,6 +68,10 @@ c. Agregar %JAVA_HOME%\bin al PATH (opcional pero recomendado):
             %JAVA_HOME%\bin
 
             Esto permite acceder a los comandos java y javac desde cualquier ubicación en la línea de comandos.
+
+            Navega hasta la carpeta donde se encuentran las librerías de Java y copia la ruta o path.
+            ejemplo: C:\Program Files\Java\jdk-23\bin
+            El el path de las variables de entorno del sistema haz clic en nuevo y pega la ruta o path.
 
         d. Guardar los cambios:
             Haz clic en Aceptar en todas las ventanas abiertas para aplicar los cambios.

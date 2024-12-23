@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from pdf_extractor import PDFLoaderThread, TaskTreeNode
 from filter_util import normalize_string, is_start_end_task
@@ -247,14 +248,13 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(self.table)
 
-        # Animación de carga
-        self.loading_animation = LoadingAnimationWidget()
-        main_layout.addWidget(self.loading_animation)
-
-        # Establece el widget central
+        # Configurar el widget central antes de crear la animación
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
+
+        # Animación de carga
+        self.loading_animation = LoadingAnimationWidget(self)
 
         # Variables de estado
         self.tasks = []
@@ -372,9 +372,33 @@ class MainWindow(QMainWindow):
 
     def show_loading(self, show):
         if show:
+            # Crear un widget semi-transparente que cubra toda la ventana principal
+            self.overlay = QWidget(self)
+            self.overlay.setGeometry(self.rect())
+            self.overlay.setStyleSheet("background-color: rgba(0, 0, 0, 100);")
+            self.overlay.show()
+
+            # Mostrar la animación
+            self.loading_animation.setGeometry(self.rect())
             self.loading_animation.start()
+            self.loading_animation.raise_()
         else:
+            # Ocultar el overlay y la animación
+            if hasattr(self, 'overlay'):
+                self.overlay.hide()
+                self.overlay.deleteLater()
             self.loading_animation.stop()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Actualizar tamaño y posición del overlay si existe
+        if hasattr(self, 'overlay') and self.overlay.isVisible():
+            self.overlay.setGeometry(self.rect())
+            # Actualizar posición de la animación
+            if self.loading_animation.isVisible():
+                x = (self.width() - self.loading_animation.width()) // 2
+                y = (self.height() - self.loading_animation.height()) // 2
+                self.loading_animation.move(x, y)
 
     def populate_table(self):
         self.table.setRowCount(len(self.tasks))

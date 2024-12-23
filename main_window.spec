@@ -5,13 +5,14 @@ block_cipher = None
 a = Analysis(
     ['src/main_window.py'],
     pathex=[],
-    binaries=[],
-    datas=[('src/loading.gif', '.')],
+    binaries=[('C:\\Program Files\\Java\\jdk-23\\bin\\server\\jvm.dll', '.')],
+    datas=[('src/loading.html', '.')],
     hiddenimports=[
         'PySide6',
         'PySide6.QtCore',
         'PySide6.QtGui',
         'PySide6.QtWidgets',
+        'PySide6-WebEngine',
         'workalendar',
         'workalendar.america',
         'jpype1',

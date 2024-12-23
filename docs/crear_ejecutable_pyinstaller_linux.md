@@ -2,6 +2,12 @@
 
 ## 1. Preparación del Entorno
 
+1. Abrir la ternminal en la raiza del proyecto. ejemplo:
+rafael@rafael:/media/rafael/Archivos1/1. Rafael/3.Proyectos_de_Software/baby-project-manager$
+
+2. virificar estar en el entorno virtual correcto.
+
+3.
 ```bash
 # Instalar dependencias necesarias
 pip install --upgrade pip
@@ -12,9 +18,13 @@ pip install -r requirements.txt
 ## 2. Configurar el Archivo Spec
 
 1. Crear el archivo spec:
+
+Asumiendo que los archivos del proyecto están en el directorio `src/`:
+
 ```bash
-pyi-makespec --onefile --windowed --add-data "src/loading.gif:." src/main_window.py
+pyi-makespec --onefile --windowed --add-data "src/loading.html:." src/main_window.py
 ```
+Se crea una archivo `main_window.spec` con la el directorio src
 
 2. Editar `main_window.spec` para incluir todas las dependencias:
 ```python
@@ -26,12 +36,13 @@ a = Analysis(
     ['src/main_window.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/loading.gif', '.')],
+    datas=[('src/loading.html', '.')],
     hiddenimports=[
         'PySide6',
         'PySide6.QtCore',
         'PySide6.QtGui',
         'PySide6.QtWidgets',
+        'PySide6-WebEngine',
         'workalendar',
         'workalendar.america',
         'jpype1',

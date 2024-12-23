@@ -10,4 +10,5 @@ __pycache__/
 # Ignorar carpetas de compilación
 build_windows/
 dist_linux/
+dist_Windows/
 ```

@@ -1126,6 +1126,9 @@ class MainWindow(QMainWindow):
         about_dialog = AboutDialog(self)
         about_dialog.exec()
 
+    def get_primary_screen(self):
+        return self.screen()
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # Usar el estilo Fusion que soporta temas oscuros/claros

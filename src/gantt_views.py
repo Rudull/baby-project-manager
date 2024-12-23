@@ -362,32 +362,33 @@ class GanttChart(QWidget):
         self.floating_menu = FloatingTaskMenu(updated_task, self)
         self.floating_menu.notesChanged.connect(self.on_notes_changed)
 
-        # Calcular la posición ajustada
+        # Calcular la posición ajustada usando la pantalla principal
         menu_size = self.floating_menu.sizeHint()
-        adjusted_position = self.adjust_menu_position(position, menu_size)
+        primary_screen = self.main_window.get_primary_screen()
+        adjusted_position = self.adjust_menu_position(position, menu_size, primary_screen)
 
         self.floating_menu.move(adjusted_position)
         self.floating_menu.show()
 
-    def adjust_menu_position(self, position, menu_size):
-        screen = QApplication.primaryScreen().geometry()
+    def adjust_menu_position(self, position, menu_size, primary_screen):
+        screen_geometry = primary_screen.geometry()
         global_pos = self.mapToGlobal(position)
 
-        # Calcular las coordenadas preferidas (cerca del puntero del mouse)
+        # Ajustar la posición al espacio de la pantalla principal
         preferred_x = global_pos.x()
         preferred_y = global_pos.y()
 
         # Ajustar horizontalmente
-        if preferred_x + menu_size.width() > screen.right():
-            preferred_x = screen.right() - menu_size.width()
-        if preferred_x < screen.left():
-            preferred_x = screen.left()
+        if preferred_x + menu_size.width() > screen_geometry.right():
+            preferred_x = screen_geometry.right() - menu_size.width()
+        if preferred_x < screen_geometry.left():
+            preferred_x = screen_geometry.left()
 
         # Ajustar verticalmente
-        if preferred_y + menu_size.height() > screen.bottom():
-            preferred_y = preferred_y - menu_size.height()  # Mostrar encima del cursor
-        if preferred_y < screen.top():
-            preferred_y = screen.top()
+        if preferred_y + menu_size.height() > screen_geometry.bottom():
+            preferred_y = preferred_y - menu_size.height()
+        if preferred_y < screen_geometry.top():
+            preferred_y = screen_geometry.top()
 
         return QPoint(preferred_x, preferred_y)
 
@@ -728,8 +729,6 @@ class FloatingTaskMenu(QWidget):
         self.is_editing = not self.is_editing
 
     def keyPressEvent(self, event):
-        if self.notes_edit.hasFocus():
-            return
         if event.key() == Qt.Key.Key_Escape:
             self.close()
         else:

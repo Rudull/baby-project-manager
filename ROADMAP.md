@@ -1,8 +1,7 @@
 ## Road Map
 
-1. Las ventanas de notas solo se muesran en la pantalla principal cuando se tiene mas de una pantalla
 2. Ajustar bug que hace que no sea visible animacion de carga en complacion de windows
-3. Al importar tareas al diagrama de Gantt o Canva deberia agregaras una nota con ID de la tarea
+3. Al importar tareas al diagrama de Gantt o Canva deberia agregaras el ID de la tarea a la venta de notas debajo del nombre de la tarea.
 4. Implementar filtro al diagrama de Gantt
 5. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
 6. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
@@ -26,6 +25,8 @@ pip install mpxj
 pip install JPype1
 pip install pycryptodome
 pip install PyPDF2
+pip install openpyxl
+pip install pandas
 
 ↳
 

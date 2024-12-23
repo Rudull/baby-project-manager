@@ -16,7 +16,7 @@ proyecto/
 │   ├── models.py
 │   ├── table_views.py
 │   ├── about_dialog.py
-│   └── loading.gif
+│   └── loading.html
 └── setup.py
 
 2. Verificar Java:
@@ -35,6 +35,8 @@ build_exe_options = {
         "os",
         "sys",
         "PySide6",
+        "PySide6.QtWebEngineWidgets", 
+        "PySide6.QtWebEngineCore",
         "workalendar",
         "gantt_views",
         "models",
@@ -43,7 +45,7 @@ build_exe_options = {
     ],
     "include_files": [
         ("src/", "src/"),
-        ("src/loading.gif", "src/loading.gif")
+        ("src/loading.html", "src/loading.html")
     ],
     "path": ["src/"] + sys.path
 }
@@ -52,7 +54,7 @@ base = "Win32GUI" if sys.platform == "win32" else None
 
 setup(
     name="BabyProjectManager",
-    version="1.0",
+    version="0.1.2",
     description="Gestor de Proyectos",
     options={"build_exe": build_exe_options},
     executables=[Executable(
