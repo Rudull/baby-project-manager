@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from models import Task, TaskTableModel
 from delegates import LineEditDelegate, DateEditDelegate, SpinBoxDelegate, StateButtonDelegate
 from file_gui import MainWindow as FileGUIWindow
+from startup_manager import StartupManager
 
 class TaskTableWidget(QWidget):
     taskDataChanged = Signal()
@@ -28,6 +29,7 @@ class TaskTableWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_window = parent
+        self.startup_manager = StartupManager(self.main_window.config)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -204,7 +206,11 @@ class TaskTableWidget(QWidget):
         region_menu.addAction("Detectar automáticamente")
         region_menu.addAction("Seleccionar país")
         config_menu.addAction("API AI")
-        config_menu.addAction("Abrir al iniciar el OS")
+        if self.main_window:
+            startup_action = config_menu.addAction("Abrir al iniciar el OS")
+            startup_action.setCheckable(True)
+            startup_action.setChecked(self.startup_manager.is_startup_enabled())
+            startup_action.triggered.connect(self.toggle_startup)
         config_menu.addAction("Alertas")
 
         about_action = menu.addAction("Acerca de")
@@ -600,3 +606,20 @@ class TaskTableWidget(QWidget):
         except Exception as e:
                print(f"Error al calcular duración: {e}")
                return "1"
+
+    def toggle_startup(self):
+            """Maneja el cambio en la configuración de inicio automático"""
+            success = self.startup_manager.toggle_startup()
+
+            if success:
+                QMessageBox.information(
+                    self,
+                    "Inicio automático",
+                    "La configuración de inicio automático se ha actualizado correctamente."
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "No se pudo actualizar la configuración de inicio automático."
+                )

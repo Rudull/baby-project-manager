@@ -30,7 +30,8 @@ class ConfigManager:
                 'view_mode': 'complete',
                 'theme': 'system',
                 'language': 'es',
-                'last_file': ''
+                'last_file': '',
+                'start_with_os': 'false'
             },
             'RecentFiles': {
                 'max_recent_files': '10'

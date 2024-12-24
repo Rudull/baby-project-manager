@@ -28,7 +28,7 @@ pip install pycryptodome
 pip install PyPDF2
 pip install openpyxl
 pip install pandas
-pip install pywin32
+pip install pywin32 (Solo Windows)
 
 ↳
 

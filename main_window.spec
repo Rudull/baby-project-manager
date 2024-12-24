@@ -44,7 +44,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='baby-project-manager',
+    name='BabyProjectManager',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

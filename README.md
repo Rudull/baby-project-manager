@@ -48,7 +48,7 @@ Baby Project Manager is a simple and effective project management application de
 
 - Python 3.7+
 - Java JDK 8+ (required for processing MPP files - ensure JAVA_HOME is set. See `docs/Configuracion de entorno virtual de Java.txt` for setup instructions)
-- Python libraries (install via `pip install -r requirements.txt`):
+- Python libraries (install via `pip install -r requirements_linux.txt`o `pip install -r requirements_windows.txt`):
     - PySide6
     - pdfplumber
     - jpype1
@@ -71,16 +71,28 @@ Baby Project Manager is a simple and effective project management application de
 python3 -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 .venv\Scripts\activate  # Windows
-pip install -r requirements.txt
+pip install -r requirements_linux.txt
+pip install -r requirements_windows.txt
 ```
 
   **Option 1 - Direct Installation:**
+  En Linux:
   ```bash
   pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar pycryptodome PyPDF2
   ```
-  **Option 2 - Using requirements.txt:**
+  En Windows:
   ```bash
-  pip install -r requirements.txt
+  pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar pycryptodome PyPDF2 pywin32
+  ```
+
+  **Option 2 - Using requirements.txt:**
+  En Linux:
+  ```bash
+  pip install -r requirements_linux.txt
+  ```
+  En Windows:
+  ```bash
+  pip install -r requirements_windows.txt
   ```
 
 ## File Structure
@@ -88,6 +100,12 @@ pip install -r requirements.txt
 ```plaintext
 ├── main_window.py
 │   └── MainWindow: "Ventana principal de la aplicación."
+├── startup_manager.py
+│   ├── StartupManager: "Manejador de inicio automatico de la aplicación."
+├── config_manager.py
+│   ├── ConfigManager: "Maneja la recuurrencia de la aplicación."
+├── about_dialog.py
+│   ├── AboutDialog(QDialog): "Maneja la ventana de información de la aplicación."
 ├── delegates.py
 │   ├── LineEditDelegate: "Delegate para editar celdas con QLineEdit."
 │   ├── DateEditDelegate: "Delegate para editar celdas con QDateEdit."
@@ -110,6 +128,8 @@ pip install -r requirements.txt
 │   └── MainWindow: "Ventana principal para la carga y filtro de archivos."
 ├── loading_animation_widget.py
 │   └── LoadingAnimationWidget: "Widget para mostrar una animación de carga."
+├── loading.html
+│   └── "Archivo HTML para mostrar una animación de carga."
 ├── filter_util.py
 │   ├── normalize_string: "Función para normalizar strings (quitar acentos y minúsculas)."
 │   ├── is_start_end_task: "Función para identificar tareas de inicio o fin."
@@ -129,6 +149,7 @@ pip install -r requirements.txt
 │   └── XLSXReader: "Clase para extraer datos de archivos XLSX."
 └── xlsx_security_checker.py
     └── check_xlsx_restrictions: "Función para verificar restricciones de seguridad en archivos XLSX."
+  ```
 
 ## Usage
 
