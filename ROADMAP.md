@@ -1,5 +1,6 @@
 ## Road Map
 
+1. Es poseble que la aplicacion se ejecute sola al iniciar el sistema operativo?
 2. Ajustar bug que hace que no sea visible animacion de carga en complacion de windows
 3. Al importar tareas al diagrama de Gantt o Canva deberia agregaras el ID de la tarea a la venta de notas debajo del nombre de la tarea.
 4. Implementar filtro al diagrama de Gantt
@@ -27,6 +28,7 @@ pip install pycryptodome
 pip install PyPDF2
 pip install openpyxl
 pip install pandas
+pip install pywin32
 
 ↳
 

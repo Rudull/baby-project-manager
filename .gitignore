@@ -6,6 +6,7 @@ __pycache__/
 *.mpp
 *.xlsx
 *.pdf
+*.xcf
 
 # Ignorar carpetas de compilación
 build_windows/

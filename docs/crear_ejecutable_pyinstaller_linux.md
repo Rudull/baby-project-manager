@@ -22,7 +22,7 @@ pip install -r requirements.txt
 Asumiendo que los archivos del proyecto están en el directorio `src/`:
 
 ```bash
-pyi-makespec --onefile --windowed --add-data "src/loading.html:." src/main_window.py
+pyi-makespec --onefile --windowed --icon=assets/icono.ico --add-data "src/loading.html:." src/main_window.py
 ```
 Se crea una archivo `main_window.spec` con la el directorio src
 
@@ -87,6 +87,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['assets/icono.ico'],
 )
 ```
 

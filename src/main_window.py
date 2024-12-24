@@ -15,10 +15,10 @@ from PySide6.QtWidgets import (
     QScrollBar, QMessageBox, QMenu, QSizePolicy
 )
 from PySide6.QtGui import (
-    QColor, QKeySequence, QShortcut, QWheelEvent
+    QColor, QKeySequence, QShortcut, QWheelEvent, QGuiApplication
 )
 from PySide6.QtCore import (
-    Qt, QDate, QTimer, Signal, QModelIndex, QEvent
+    Qt, QDate, QTimer, Signal, QModelIndex, QEvent, QPoint, QRect
 )
 
 from gantt_views import GanttWidget
@@ -37,14 +37,7 @@ class MainWindow(QMainWindow):
         self.config = ConfigManager()
 
         # Cargar geometría de la ventana
-        self.resize(
-            int(self.config.get('Window', 'width')),
-            int(self.config.get('Window', 'height'))
-        )
-        self.move(
-            int(self.config.get('Window', 'pos_x')),
-            int(self.config.get('Window', 'pos_y'))
-        )
+        self.load_window_geometry()
 
         self.unsaved_changes = False
         self.base_title = "Baby project manager"
@@ -134,6 +127,48 @@ class MainWindow(QMainWindow):
 
         # Cargar el último archivo usado
         QTimer.singleShot(0, self.load_last_file)
+
+    def ensure_window_on_screen(self):
+            """
+            Verifica si la ventana está dentro de los monitores conectados.
+            Si no lo está, la mueve al monitor principal en una posición predeterminada.
+            """
+            window_rect = self.frameGeometry()
+            available_screens = QGuiApplication.screens()
+
+            # Verificar si la ventana intersecta con cualquiera de las geometrías disponibles
+            on_screen = False
+            for screen in available_screens:
+                if screen.availableGeometry().intersects(window_rect):
+                    on_screen = True
+                    break
+
+            if not on_screen:
+                # Mover la ventana al centro del monitor principal
+                primary_screen = QGuiApplication.primaryScreen()
+                primary_geom = primary_screen.availableGeometry()
+                new_x = primary_geom.x() + (primary_geom.width() - self.width()) // 2
+                new_y = primary_geom.y() + (primary_geom.height() - self.height()) // 2
+                self.move(new_x, new_y)
+
+                # Actualizar la configuración con la nueva posición
+                self.config.set('Window', 'pos_x', str(new_x))
+                self.config.set('Window', 'pos_y', str(new_y))
+
+    def load_window_geometry(self):
+            try:
+                width = int(self.config.get('Window', 'width'))
+                height = int(self.config.get('Window', 'height'))
+                pos_x = int(self.config.get('Window', 'pos_x'))
+                pos_y = int(self.config.get('Window', 'pos_y'))
+            except (ValueError, TypeError):
+                # Valores predeterminados en caso de error
+                width, height = 1200, 800
+                pos_x, pos_y = 100, 100
+
+            self.resize(width, height)
+            self.move(pos_x, pos_y)
+            self.ensure_window_on_screen()
 
     def load_last_file(self):
         """Carga el último archivo usado si existe."""
