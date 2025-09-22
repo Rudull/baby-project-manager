@@ -22,6 +22,7 @@ from models import Task, TaskTableModel
 from delegates import LineEditDelegate, DateEditDelegate, SpinBoxDelegate, StateButtonDelegate
 from file_gui import MainWindow as FileGUIWindow
 from startup_manager import StartupManager
+from command_system import ResetColorsCommand, AddTaskCommand
 
 class TaskTableWidget(QWidget):
     taskDataChanged = Signal()
@@ -36,7 +37,7 @@ class TaskTableWidget(QWidget):
         self.main_layout.setSpacing(0)
 
         # Crear el modelo y la vista
-        self.model = TaskTableModel()
+        self.model = TaskTableModel(main_window=self.main_window)
         self.table_view = QTableView()
         self.table_view.setModel(self.model)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
@@ -80,6 +81,8 @@ class TaskTableWidget(QWidget):
         # Botón de menú
         self.menu_button = QPushButton("☰", self)
         self.menu_button.clicked.connect(self.show_menu)
+        self.menu_button.setParent(self)
+        self.menu_button.raise_()
         QTimer.singleShot(0, self.adjust_button_size)
 
         self.current_file_path = None
@@ -130,9 +133,10 @@ class TaskTableWidget(QWidget):
             border: none;
         }
         """)
-        self.table_view.setColumnWidth(0, 25)
-        self.menu_button.setFixedSize(QSize(25, self.main_window.ROW_HEIGHT if self.main_window else 25))
-        self.menu_button.move(0, 0)
+        column_width = 25
+        self.table_view.setColumnWidth(0, column_width)
+        self.menu_button.setFixedSize(QSize(column_width, self.table_view.horizontalHeader().height()))
+        # El botón se posicionará correctamente en adjust_button_size
 
     def setup_item_change_detection(self):
         self.model.dataChanged.connect(self.on_data_changed)
@@ -140,11 +144,24 @@ class TaskTableWidget(QWidget):
     def on_data_changed(self, topLeft, bottomRight, roles):
         if Qt.ItemDataRole.EditRole in roles or Qt.ItemDataRole.DisplayRole in roles or Qt.ItemDataRole.UserRole in roles:
             if self.main_window:
-                self.main_window.set_unsaved_changes(True)
+                # Solo marcar cambios sin guardar si no estamos cargando un archivo
+                if not hasattr(self.main_window, '_loading_file') or not self.main_window._loading_file:
+                    self.main_window.set_unsaved_changes(True)
                 self.main_window.update_gantt_chart()
 
     def show_menu(self):
         menu = QMenu(self)
+
+        # Opciones de deshacer/rehacer
+        undo_action = menu.addAction("Deshacer\tCtrl+Z")
+        undo_action.setEnabled(self.main_window.command_manager.can_undo())
+        undo_action.triggered.connect(self.main_window.undo_action)
+
+        redo_action = menu.addAction("Rehacer\tCtrl+Y")
+        redo_action.setEnabled(self.main_window.command_manager.can_redo())
+        redo_action.triggered.connect(self.main_window.redo_action)
+
+        menu.addSeparator()
 
         save_action = menu.addAction("Guardar")
         save_action.triggered.connect(self.save_file)
@@ -172,7 +189,9 @@ class TaskTableWidget(QWidget):
                 action.setEnabled(False)
 
         add_task_action = menu.addAction("Agregar Nueva Tarea")
-        add_task_action.triggered.connect(self.main_window.add_new_task)
+        add_task_action.triggered.connect(lambda: self.main_window.command_manager.execute_command(
+            AddTaskCommand(self.main_window)
+        ))
 
         view_menu = menu.addMenu("Vista")
         # Submenús de Vista
@@ -191,7 +210,9 @@ class TaskTableWidget(QWidget):
             one_month_action.triggered.connect(self.main_window.set_one_month_view)
 
         reset_all_colors_action = menu.addAction("Restablecer colores")
-        reset_all_colors_action.triggered.connect(self.reset_all_colors)
+        reset_all_colors_action.triggered.connect(lambda: self.main_window.command_manager.execute_command(
+            ResetColorsCommand(self.main_window)
+        ))
 
         import_action = menu.addAction("Importar cronogramas")
         import_action.triggered.connect(lambda: self.show_file_gui())
@@ -223,9 +244,16 @@ class TaskTableWidget(QWidget):
     def adjust_button_size(self):
         header = self.table_view.horizontalHeader()
         header_height = header.height()
-        button_width = 25  # Ya establecido en setup_table_style
-        self.menu_button.setFixedSize(QSize(button_width, header_height))
-        self.menu_button.move(0, 0)
+        button_width = self.table_view.columnWidth(0) + 2  # Aumentar el ancho en 2 píxeles
+
+        # El botón debe tener la altura del header y estar alineado con él
+        button_height = header_height
+
+        self.menu_button.setFixedSize(QSize(button_width, button_height))
+
+        # Posicionar el botón con un margen de 1 píxel para alineación visual precisa
+        MARGIN = 1
+        self.menu_button.move(MARGIN, 0)
 
     def show_task_context_menu(self, position):
         index = self.table_view.indexAt(position)
@@ -326,6 +354,12 @@ class TaskTableWidget(QWidget):
 
     def load_tasks_from_file(self, file_path):
         try:
+            # Marcar que estamos cargando un archivo para evitar cambios sin guardar
+            if self.main_window:
+                self.main_window._loading_file = True
+                # Limpiar historial de comandos al cargar archivo
+                self.main_window.command_manager.clear()
+
             self.model.beginResetModel()
             self.model.tasks = []
             tasks_with_parents = []
@@ -415,10 +449,16 @@ class TaskTableWidget(QWidget):
             self.current_file_path = file_path
             if self.main_window:
                 self.main_window.config.set_last_file(file_path)
+                self.main_window.update_gantt_chart(set_unsaved=False)
                 self.main_window.set_unsaved_changes(False)
-                self.main_window.update_gantt_chart()
+                self.main_window._loading_file = False
+                # Limpiar historial después de cargar exitosamente
+                self.main_window.command_manager.clear()
             print(f"Archivo cargado desde: {file_path}")
         except Exception as e:
+            # Asegurar que la bandera se restablezca incluso en caso de error
+            if self.main_window:
+                self.main_window._loading_file = False
             print(f"Error al cargar el archivo: {e}")
 
     def add_task_to_table(self, task_data, editable=False):
@@ -467,13 +507,10 @@ class TaskTableWidget(QWidget):
         self.taskDataChanged.emit()
 
     def reset_all_colors(self):
-        default_color = QColor(34, 163, 159)  # Color por defecto
-        for task in self.model.tasks:
-            task.color = default_color
-        self.model.dataChanged.emit(self.model.index(0, 1), self.model.index(self.model.rowCount()-1, 1), [Qt.ItemDataRole.BackgroundRole])
+        """Método mantenido para compatibilidad - usar comando en su lugar."""
         if self.main_window:
-            self.main_window.set_unsaved_changes(True)
-            self.main_window.update_gantt_chart()
+            command = ResetColorsCommand(self.main_window)
+            self.main_window.command_manager.execute_command(command)
 
     def new_project(self):
         # Verificar si hay cambios sin guardar
@@ -483,6 +520,9 @@ class TaskTableWidget(QWidget):
             self.model.tasks = []
             self.model.update_visible_tasks()
             self.model.endResetModel()
+
+            # Limpiar historial de comandos
+            self.main_window.command_manager.clear()
 
             # Reiniciar variables relacionadas con el archivo
             if hasattr(self, 'current_file_path'):

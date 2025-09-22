@@ -13,7 +13,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWebEngineWidgets import QWebEngineView
+try:
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+    WEBENGINE_AVAILABLE = True
+except ImportError:
+    QWebEngineView = None
+    WEBENGINE_AVAILABLE = False
 
 from pdf_extractor import PDFLoaderThread, TaskTreeNode
 from filter_util import normalize_string, is_start_end_task

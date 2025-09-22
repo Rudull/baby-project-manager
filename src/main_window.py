@@ -26,6 +26,12 @@ from models import Task, TaskTableModel
 from table_views import TaskTableWidget
 from about_dialog import AboutDialog
 from config_manager import ConfigManager
+from command_system import (
+    CommandManager, AddTaskCommand, DeleteTaskCommand, MoveTaskCommand,
+    EditTaskCommand, ChangeColorCommand, DuplicateTaskCommand,
+    ConvertTaskCommand, AddSubtaskCommand, InsertTaskCommand,
+    ResetColorsCommand, EditNotesCommand
+)
 
 class MainWindow(QMainWindow):
     ROW_HEIGHT = 25
@@ -52,6 +58,12 @@ class MainWindow(QMainWindow):
         self.wheel_threshold = 100  # Ajusta este valor
         self.current_view = "complete"  # Vista por defecto
         self.file_gui_windows = []
+        self._loading_file = False  # Bandera para evitar marcar cambios sin guardar al cargar archivos
+
+        # Inicializar sistema de comandos
+        self.command_manager = CommandManager()
+        self.command_manager.canUndoChanged.connect(self.update_undo_status)
+        self.command_manager.canRedoChanged.connect(self.update_redo_status)
 
         # Crear un widget central con QGridLayout
         main_widget = QWidget()
@@ -77,9 +89,13 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.task_table_widget)
         self.table_view = self.task_table_widget.table_view
         self.model = self.task_table_widget.model
+        self.model.main_window = self  # Establecer referencia al main_window
 
         # Conectar la señal layoutChanged del modelo con update_gantt_chart
         self.model.layoutChanged.connect(self.on_model_layout_changed)
+
+        # Conectar cambios de datos para comandos de edición
+        self.model.dataChanged.connect(self.on_model_data_changed)
 
         left_widget.setFixedWidth(600)  # Tamaño fijo para la tabla de tareas
         self.task_table_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -91,8 +107,8 @@ class MainWindow(QMainWindow):
         self.gantt_chart = self.gantt_widget.chart
         self.gantt_chart.main_window = self
 
-        # Conectar la señal colorChanged
-        self.gantt_chart.colorChanged.connect(self.update_task_color)
+        # Comentado: usar sistema de comandos en su lugar
+        # self.gantt_chart.colorChanged.connect(self.update_task_color)
 
         # Crear un scrollbar vertical compartido
         self.shared_scrollbar = QScrollBar(Qt.Orientation.Vertical)
@@ -114,19 +130,54 @@ class MainWindow(QMainWindow):
 
         self.adjust_all_row_heights()
 
-        self.update_gantt_chart()
+        self.update_gantt_chart(set_unsaved=False)
 
         self.set_unsaved_changes(False)
 
-        # Atajo de teclado para guardar
+        # Atajos de teclado
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.quick_save)
+
+        undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
+        undo_shortcut.activated.connect(self.undo_action)
+
+        redo_shortcut = QShortcut(QKeySequence("Ctrl+Y"), self)
+        redo_shortcut.activated.connect(self.redo_action)
 
         # Instalar el filtro de eventos al final del __init__
         self.installEventFilter(self)
 
         # Cargar el último archivo usado
         QTimer.singleShot(0, self.load_last_file)
+
+    def undo_action(self):
+        """Ejecuta deshacer."""
+        print(f"🔄 MainWindow.undo_action: Intentando deshacer")
+        print(f"🔄 Puede deshacer: {self.command_manager.can_undo()}")
+        print(f"🔄 Historial: {len(self.command_manager.command_history)} comandos")
+        if self.command_manager.undo():
+            print(f"✅ Deshecho: {self.command_manager.get_undo_text()}")
+        else:
+            print(f"❌ No se pudo deshacer")
+
+    def redo_action(self):
+        """Ejecuta rehacer."""
+        print(f"🔄 MainWindow.redo_action: Intentando rehacer")
+        print(f"🔄 Puede rehacer: {self.command_manager.can_redo()}")
+        if self.command_manager.redo():
+            print(f"✅ Rehecho: {self.command_manager.get_redo_text()}")
+        else:
+            print(f"❌ No se pudo rehacer")
+
+    def update_undo_status(self, can_undo):
+        """Actualiza el estado de deshacer."""
+        # Aquí se puede actualizar la UI si hay botones de deshacer
+        pass
+
+    def update_redo_status(self, can_redo):
+        """Actualiza el estado de rehacer."""
+        # Aquí se puede actualizar la UI si hay botones de rehacer
+        pass
 
     def ensure_window_on_screen(self):
             """
@@ -174,7 +225,13 @@ class MainWindow(QMainWindow):
         """Carga el último archivo usado si existe."""
         last_file = self.config.get_last_file()
         if last_file:
+            self._loading_file = True
             self.task_table_widget.load_tasks_from_file(last_file)
+            # Limpiar historial de comandos al cargar un archivo
+            self.command_manager.clear()
+            # Asegurar que cargar el último archivo no marque cambios sin guardar
+            self.set_unsaved_changes(False)
+            self._loading_file = False
 
     def copy_current_notes(self):
         pass  # Método vacío
@@ -235,6 +292,13 @@ class MainWindow(QMainWindow):
             self.update_title()
 
     def delete_task(self, row):
+        """Elimina una tarea usando el sistema de comandos."""
+        if row >= 0:
+            command = DeleteTaskCommand(self, row)
+            self.command_manager.execute_command(command)
+
+    def _delete_task_internal(self, row):
+        """Eliminación interna de tarea (llamada por el comando)."""
         if row >= 0:
             # Obtener la tarea a eliminar desde visible_tasks
             task = self.model.getTask(row)
@@ -310,6 +374,12 @@ class MainWindow(QMainWindow):
         return count
 
     def add_new_task(self):
+        """Añade una nueva tarea usando el sistema de comandos."""
+        command = AddTaskCommand(self)
+        self.command_manager.execute_command(command)
+
+    def _add_new_task_internal(self):
+        """Añade nueva tarea internamente (llamada por el comando)."""
         default_color = QColor(34, 163, 159)  # Color por defecto
         task_data = {
             'NAME': "Nueva Tarea",
@@ -442,6 +512,14 @@ class MainWindow(QMainWindow):
                 self.set_unsaved_changes(True)
 
     def duplicate_task(self, row):
+        """Duplica una tarea usando el sistema de comandos."""
+        print(f"🔧 MainWindow.duplicate_task: Duplicando tarea en fila {row}")
+        command = DuplicateTaskCommand(self, row)
+        self.command_manager.execute_command(command)
+        print(f"✅ MainWindow.duplicate_task: Comando ejecutado")
+
+    def _duplicate_task_internal(self, row):
+        """Duplicación interna de tarea (llamada por el comando)."""
         model = self.model
         if row >= 0 and row < model.rowCount():
             # Convertir índice visible a índice real
@@ -547,6 +625,14 @@ class MainWindow(QMainWindow):
                             self.table_view.edit(model.index(new_visible_row, 1))
 
     def insert_task(self, row):
+        """Inserta una tarea usando el sistema de comandos."""
+        print(f"🔧 MainWindow.insert_task: Insertando tarea en fila {row}")
+        command = InsertTaskCommand(self, row)
+        self.command_manager.execute_command(command)
+        print(f"✅ MainWindow.insert_task: Comando ejecutado")
+
+    def _insert_task_internal(self, row):
+        """Inserción interna de tarea (llamada por el comando)."""
         model = self.model
         if row < len(model.visible_to_actual):
             # Convertir índice visible a índice real
@@ -613,6 +699,13 @@ class MainWindow(QMainWindow):
             self.table_view.edit(model.index(visible_index, 1))  # Columna "Nombre"
 
     def move_task_up(self, row):
+        """Mueve una tarea hacia arriba usando el sistema de comandos."""
+        if row > 0:
+            command = MoveTaskCommand(self, row, "up")
+            self.command_manager.execute_command(command)
+
+    def _move_task_up_internal(self, row):
+        """Movimiento interno hacia arriba (llamado por el comando)."""
         model = self.model
         if row > 0:
             # Asegurarse de que el índice visible es válido
@@ -675,6 +768,13 @@ class MainWindow(QMainWindow):
             pass
 
     def move_task_down(self, row):
+        """Mueve una tarea hacia abajo usando el sistema de comandos."""
+        if row < self.model.rowCount() - 1:
+            command = MoveTaskCommand(self, row, "down")
+            self.command_manager.execute_command(command)
+
+    def _move_task_down_internal(self, row):
+        """Movimiento interno hacia abajo (llamado por el comando)."""
         model = self.model
         if row < model.rowCount() - 1:
             # Asegurarse de que el índice visible es válido
@@ -732,6 +832,12 @@ class MainWindow(QMainWindow):
             pass
 
     def convert_to_subtask(self, task_index):
+        """Convierte tarea a subtarea usando el sistema de comandos."""
+        command = ConvertTaskCommand(self, task_index, "to_subtask")
+        self.command_manager.execute_command(command)
+
+    def _convert_to_subtask_internal(self, task_index):
+        """Conversión interna a subtarea (llamada por el comando)."""
         model = self.model
         if task_index < len(model.visible_to_actual):
             actual_row = model.visible_to_actual[task_index]
@@ -766,6 +872,12 @@ class MainWindow(QMainWindow):
                     self.set_unsaved_changes(True)
 
     def convert_to_parent_task(self, task_index):
+        """Convierte subtarea a tarea padre usando el sistema de comandos."""
+        command = ConvertTaskCommand(self, task_index, "to_parent")
+        self.command_manager.execute_command(command)
+
+    def _convert_to_parent_task_internal(self, task_index):
+        """Conversión interna a tarea padre (llamada por el comando)."""
         model = self.model
         if task_index < len(model.visible_to_actual):
             actual_row = model.visible_to_actual[task_index]
@@ -811,34 +923,16 @@ class MainWindow(QMainWindow):
                     self.table_view.scrollTo(model.index(new_visible_row, 0))
 
     def reset_task_color(self, task_index):
+        """Restablece el color de una tarea usando el sistema de comandos."""
         if 0 <= task_index < len(self.tasks):
             task = self.tasks[task_index]
             if task:
-                default_color = QColor(34, 163, 159)  # Color por defecto
-                task.color = default_color
-                task.is_editing = False  # Restablecer is_editing al cambiar el color
-
-                # Encontrar el índice real de la tarea en self.model.tasks
-                actual_row = self.model.tasks.index(task)
-
-                # Encontrar el índice visible de la tarea en la tabla
-                visible_row = self.model.actual_to_visible.get(actual_row)
-                if visible_row is not None:
-                    index = self.model.index(visible_row, 1)
-                    self.model.dataChanged.emit(index, index, [Qt.ItemDataRole.BackgroundRole])
-
-                # Si la tarea tiene subtareas, restablecer sus colores también
-                if not task.is_subtask and task.subtasks:
-                    for subtask in task.subtasks:
-                        subtask.color = default_color
-                        subtask_actual_row = self.model.tasks.index(subtask)
-                        subtask_visible_row = self.model.actual_to_visible.get(subtask_actual_row)
-                        if subtask_visible_row is not None:
-                            index = self.model.index(subtask_visible_row, 1)
-                            self.model.dataChanged.emit(index, index, [Qt.ItemDataRole.BackgroundRole])
-
-                self.set_unsaved_changes(True)
-                self.update_gantt_chart()
+                print(f"🔧 MainWindow.reset_task_color: Restableciendo color de tarea {task_index}")
+                old_color = task.color
+                default_color = QColor(34, 163, 159)
+                command = ChangeColorCommand(self, task_index, old_color, default_color)
+                self.command_manager.execute_command(command)
+                print(f"✅ MainWindow.reset_task_color: Comando ejecutado")
 
     def show_context_menu(self, position):
         index = self.table_view.indexAt(position)
@@ -903,11 +997,25 @@ class MainWindow(QMainWindow):
 
         self.update_shared_scrollbar_range()  # Actualizar el rango del scrollbar
 
-    def update_task_color(self, task_index, color):
+    def update_task_color(self, task_index, color, use_command=True):
+        """Actualiza el color de una tarea."""
+        if use_command and 0 <= task_index < len(self.tasks):
+            task = self.tasks[task_index]
+            if task:
+                print(f"🔧 MainWindow.update_task_color: Cambiando color de tarea {task_index} a {color.name()}")
+                old_color = task.color
+                command = ChangeColorCommand(self, task_index, old_color, color)
+                self.command_manager.execute_command(command)
+                print(f"✅ MainWindow.update_task_color: Comando ejecutado")
+        else:
+            self._update_task_color_internal(task_index, color)
+
+    def _update_task_color_internal(self, task_index, color):
+        """Actualización interna del color (llamada por el comando)."""
         if 0 <= task_index < len(self.tasks):
             task = self.tasks[task_index]
             if task:
-                task.color = color  # Actualizar el color en el objeto Task
+                task.color = color
                 task.is_editing = False  # Restablecer is_editing al cambiar el color
 
                 # Encontrar el índice real de la tarea en self.model.tasks
@@ -929,6 +1037,8 @@ class MainWindow(QMainWindow):
                             index = self.model.index(subtask_visible_row, 1)
                             self.model.dataChanged.emit(index, index, [Qt.ItemDataRole.BackgroundRole])
 
+                # Forzar actualización de botones de estado
+                self.task_table_widget.update_state_buttons()
                 self.set_unsaved_changes(True)
                 self.update_gantt_chart()
 
@@ -1088,6 +1198,14 @@ class MainWindow(QMainWindow):
             self.wheel_accumulator = 0  # Reiniciar el acumulador
 
     def add_subtask(self, parent_task_index):
+        """Añade una subtarea usando el sistema de comandos."""
+        print(f"🔧 MainWindow.add_subtask: Agregando subtarea a tarea {parent_task_index}")
+        command = AddSubtaskCommand(self, parent_task_index)
+        self.command_manager.execute_command(command)
+        print(f"✅ MainWindow.add_subtask: Comando ejecutado")
+
+    def _add_subtask_internal(self, parent_task_index):
+        """Añade subtarea internamente (llamada por el comando)."""
         model = self.model
         if parent_task_index < len(model.visible_to_actual):
             # Convertir índice visible a índice real
@@ -1145,8 +1263,22 @@ class MainWindow(QMainWindow):
 
     # Método para manejar cambios en el modelo
     def on_model_layout_changed(self):
-        self.update_gantt_chart()
-        self.set_unsaved_changes(True)
+        self.update_gantt_chart(set_unsaved=False)
+        # Solo marcar cambios sin guardar si no estamos cargando un archivo
+        if not hasattr(self, '_loading_file') or not self._loading_file:
+            self.set_unsaved_changes(True)
+
+    def on_model_data_changed(self, topLeft, bottomRight, roles):
+        """Maneja cambios en los datos del modelo."""
+        if hasattr(self, '_loading_file') and self._loading_file:
+            return
+
+        # Solo marcar cambios sin guardar si no estamos editando programáticamente
+        if not getattr(self.model, '_editing_programmatically', False):
+            self.set_unsaved_changes(True)
+            # Actualizar gantt si es necesario
+            if Qt.ItemDataRole.EditRole in roles:
+                self.update_gantt_chart(set_unsaved=False)
 
     def update_gantt_highlight(self, task_index):
         print(f"update_gantt_highlight called with task_index: {task_index}")

@@ -1,15 +1,56 @@
 ```gitignore
+# Python
 __pycache__/
 *.pyc
-*.ft
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDEs
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# Project files
+*.ft
 *.mpp
 *.xlsx
 *.pdf
 *.xcf
+*.bpm
 
-# Ignorar carpetas de compilación
-build_windows/
-dist_linux/
-dist_Windows/
+# Build directories and files
+build/
+dist/
+distribution/
+*.spec
+setup_cx_freeze.py
+
+# PyInstaller
+*.manifest
+*.exe.log
+
+# cx_Freeze
+build_cx_freeze/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Virtual environments
+venv/
+env/
+ENV/
 ```

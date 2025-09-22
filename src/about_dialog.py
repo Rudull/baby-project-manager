@@ -20,7 +20,7 @@ class AboutDialog(QDialog):
         # layout.addWidget(logo_label)
 
         # Versión
-        version_label = QLabel("Versión 0.2.3")
+        version_label = QLabel("Versión 0.3.3")
         version_label.setAlignment(Qt.AlignCenter)
         version_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(version_label)

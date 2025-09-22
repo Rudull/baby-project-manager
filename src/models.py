@@ -79,10 +79,12 @@ class Task:
                 self.file_links[key] = value
 
 class TaskTableModel(QAbstractTableModel):
-    def __init__(self, tasks=None):
+    def __init__(self, tasks=None, main_window=None):
         super(TaskTableModel, self).__init__()
         self.headers = ["", "Nombre", "Fecha inicial", "Fecha final", "Días", "%"]
         self.tasks = tasks or []
+        self.main_window = main_window
+        self._editing_programmatically = False
         self.update_visible_tasks()
 
     def update_visible_tasks(self):
@@ -207,26 +209,100 @@ class TaskTableModel(QAbstractTableModel):
             column = index.column()
 
             if role == Qt.ItemDataRole.EditRole:
-                if column == 1:
-                    task.name = str(value)
-                elif column == 2:
-                    task.start_date = str(value)
-                    # Recalcular la duración al cambiar la fecha inicial
-                    self.recalculate_duration(task)
-                elif column == 3:
-                    task.end_date = str(value)
-                    # Recalcular la duración al cambiar la fecha final
-                    self.recalculate_duration(task)
-                elif column == 4:
-                    task.duration = str(value)
-                    # Recalcular la fecha final al cambiar la duración
-                    self.recalculate_end_date(task)
-                elif column == 5:
-                    task.dedication = str(value)
-                task.is_editing = False  # Reset is_editing after editing
-                self.dataChanged.emit(index, index, [role])
-                return True
+                # Si estamos editando programáticamente (desde un comando), no crear nuevo comando
+                if self._editing_programmatically:
+                    return self._set_data_direct(task, column, value, index)
+
+                # Si tenemos acceso al main_window y no estamos cargando archivo, crear comando
+                if (self.main_window and
+                    hasattr(self.main_window, 'command_manager') and
+                    not getattr(self.main_window, '_loading_file', False)):
+
+                    # Crear comando de edición con valores anteriores
+                    old_value = self._get_current_value(task, column)
+                    new_value = str(value)
+
+                    if old_value != new_value:
+                        from command_system import EditTaskCommand
+                        field_map = {1: 'name', 2: 'start_date', 3: 'end_date',
+                                   4: 'duration', 5: 'dedication'}
+
+                        if column in field_map:
+                            command = EditTaskCommand(
+                                self.main_window,
+                                index.row(),
+                                field_map[column],
+                                old_value,
+                                new_value
+                            )
+                            self.main_window.command_manager.execute_command(command)
+                            return True
+
+                # Fallback para edición directa
+                return self._set_data_direct(task, column, value, index)
             return False
+
+    def _get_current_value(self, task, column):
+        """Obtiene el valor actual de la tarea para la columna especificada."""
+        if column == 1:
+            return task.name
+        elif column == 2:
+            return task.start_date
+        elif column == 3:
+            return task.end_date
+        elif column == 4:
+            return task.duration
+        elif column == 5:
+            return task.dedication
+        return ""
+
+    def _set_data_direct(self, task, column, value, index):
+        """Establece datos directamente sin crear comandos."""
+        if column == 1:
+            task.name = str(value)
+        elif column == 2:
+            task.start_date = str(value)
+            # Recalcular la duración al cambiar la fecha inicial
+            self.recalculate_duration(task)
+        elif column == 3:
+            task.end_date = str(value)
+            # Recalcular la duración al cambiar la fecha final
+            self.recalculate_duration(task)
+        elif column == 4:
+            task.duration = str(value)
+            # Recalcular la fecha final al cambiar la duración
+            self.recalculate_end_date(task)
+        elif column == 5:
+            task.dedication = str(value)
+
+        task.is_editing = False  # Reset is_editing after editing
+        self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
+        return True
+
+    def set_data_programmatically(self, task, field, value):
+        """Permite establecer datos programáticamente sin crear comandos."""
+        self._editing_programmatically = True
+        try:
+            setattr(task, field, value)
+
+            # Recalcular dependencias si es necesario
+            if field == 'start_date' or field == 'end_date':
+                self.recalculate_duration(task)
+            elif field == 'duration':
+                self.recalculate_end_date(task)
+
+            # Encontrar el índice de la tarea y emitir señal
+            try:
+                row = self.visible_tasks.index(task)
+                column_map = {'name': 1, 'start_date': 2, 'end_date': 3, 'duration': 4, 'dedication': 5}
+                if field in column_map:
+                    index = self.index(row, column_map[field])
+                    self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
+            except ValueError:
+                pass
+
+        finally:
+            self._editing_programmatically = False
 
     def recalculate_duration(self, task):
         # Parsear las fechas de inicio y fin

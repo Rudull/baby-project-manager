@@ -347,11 +347,8 @@ class GanttChart(QWidget):
                 # Abrir el diálogo de selección de color
                 color = QColorDialog.getColor(initial=task.color, parent=self)
                 if color.isValid():
-                    # Actualizar el color de la tarea
-                    task.color = color
-                    self.update()
-                    # Emitir señal para actualizar la tabla
-                    self.colorChanged.emit(task_index, color)
+                    # Usar el método de la ventana principal que maneja comandos
+                    self.main_window.update_task_color(task_index, color, use_command=True)
         super().mouseDoubleClickEvent(event)
 
     def show_floating_menu(self, position, task):
@@ -457,7 +454,7 @@ class GanttChart(QWidget):
 
                 # Después de dibujar la barra, verificar si tiene notas
                 if task.notes_html and task.notes_html.strip():
-                    # Dibujar indicador de notas (pequeño círculo o ícono)
+                    # Dibujar indicador de notas (solo un pequeño círculo amarillo)
                     note_indicator_size = 8
                     note_x = x + width - note_indicator_size
                     note_y = bar_y
@@ -468,15 +465,6 @@ class GanttChart(QWidget):
                     painter.drawEllipse(
                         note_x, note_y,
                         note_indicator_size, note_indicator_size
-                    )
-
-                    # Dibujar símbolo "N" en negro
-                    painter.setPen(QPen(Qt.black))
-                    painter.setFont(QFont("Arial", 6))
-                    painter.drawText(
-                        QRectF(note_x, note_y, note_indicator_size, note_indicator_size),
-                        Qt.AlignCenter,
-                        "N"
                     )
 
             # Dibujar la línea del día de hoy
@@ -657,6 +645,12 @@ class FloatingTaskMenu(QWidget):
         self.notes_edit.textChanged.connect(self.update_task_notes)
         self.notes_edit.doubleClicked.connect(self.open_hyperlink)
         self.is_editing = False
+        self.original_notes_html = self.task.notes_html if self.task.notes_html else ""
+        self.original_file_links = self.task.file_links.copy() if self.task.file_links else {}
+        self._initializing = True
+        self._last_saved_html = self.original_notes_html
+        self._last_saved_links = self.original_file_links.copy()
+        self._initializing = False
 
         # Después de layout.addWidget(self.notes_edit), agregar:
         add_link_button = QPushButton("Agregar Hipervínculo")
@@ -685,18 +679,30 @@ class FloatingTaskMenu(QWidget):
         return working_days
 
     def update_task_notes(self):
-        if self.task.notes_html != self.notes_edit.toHtml():
-            # Actualizar solo si hay cambios
-            current_html = self.notes_edit.toHtml()
-            current_text = self.notes_edit.toPlainText()
-            current_links = self.notes_edit.file_links.copy()
+        # Evitar procesar cambios durante la inicialización
+        if getattr(self, '_initializing', False):
+            return
 
-            self.task.notes_html = current_html
-            self.task.notes = current_text
-            self.task.file_links = current_links
+        # Evitar procesar cambios cuando se está actualizando desde un comando
+        if getattr(self, '_updating_from_command', False):
+            return
 
-            self.notesChanged.emit()
-            self.is_editing = True
+        # Solo actualizar directamente durante la edición, sin crear comandos
+        current_html = self.notes_edit.toHtml()
+        current_text = self.notes_edit.toPlainText().strip()
+        current_links = self.notes_edit.file_links.copy()
+
+        # Normalizar HTML vacío
+        if not current_text:
+            current_html = ""
+
+        # Actualización directa temporal (no permanente hasta cerrar)
+        self.task.notes_html = current_html
+        self.task.notes = current_text
+        self.task.file_links = current_links
+
+        self.notesChanged.emit()
+        self.is_editing = True
 
     def update_colors(self):
         palette = self.palette()
@@ -728,8 +734,76 @@ class FloatingTaskMenu(QWidget):
     def toggle_editing(self):
         self.is_editing = not self.is_editing
 
+
+
+    def closeEvent(self, event):
+        """Manejar el cierre del menú flotante."""
+        print(f"📝 FloatingTaskMenu cerrándose, procesando cambios finales")
+        self._process_final_changes()
+        super().closeEvent(event)
+
+    def _process_final_changes(self):
+        """Procesa los cambios finales y crea comando si es necesario."""
+        if not hasattr(self, 'notes_edit'):
+            return
+
+        current_html = self.notes_edit.toHtml()
+        current_text = self.notes_edit.toPlainText().strip()
+        current_links = self.notes_edit.file_links.copy()
+
+        # Normalizar HTML vacío
+        if not current_text:
+            current_html = ""
+
+        # Solo crear comando si hay cambios reales
+        original_text = self._extract_plain_text(self.original_notes_html)
+        if (current_html != self.original_notes_html or
+            current_links != self.original_file_links or
+            current_text != original_text):
+
+            print(f"📝 Detectados cambios en notas:")
+            print(f"   HTML original: '{self.original_notes_html[:50]}...'")
+            print(f"   HTML actual: '{current_html[:50]}...'")
+            print(f"   Links cambiaron: {current_links != self.original_file_links}")
+
+            # Buscar la ventana principal
+            main_window = None
+            parent = self.parent()
+            while parent and not hasattr(parent, 'command_manager'):
+                parent = parent.parent()
+            if hasattr(parent, 'command_manager'):
+                main_window = parent
+
+            if main_window and not getattr(main_window, '_loading_file', False):
+                print(f"📝 Creando comando EditNotesCommand")
+                # Crear comando para cambio de notas
+                from command_system import EditNotesCommand
+                command = EditNotesCommand(
+                    main_window,
+                    self.task,
+                    self.original_notes_html,
+                    current_html,
+                    self.original_file_links,
+                    current_links
+                )
+
+                main_window.command_manager.execute_command(command)
+            else:
+                print(f"📝 No se creó comando: main_window={main_window}, loading={getattr(main_window, '_loading_file', False) if main_window else 'N/A'}")
+
+    def _extract_plain_text(self, html_text):
+        """Extrae texto plano del HTML."""
+        if not html_text:
+            return ""
+        # Remover tags HTML básicos
+        import re
+        clean = re.compile('<.*?>')
+        return re.sub(clean, '', html_text).strip()
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
+            print(f"📝 Escape presionado, procesando cambios finales")
+            self._process_final_changes()
             self.close()
         else:
             super().keyPressEvent(event)

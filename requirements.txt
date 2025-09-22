@@ -1,0 +1,53 @@
+# Baby Project Manager - Universal Requirements
+# Compatible with Windows, Linux, and macOS
+# Install with: pip install -r requirements.txt
+
+# Core GUI Framework
+PySide6>=6.4.0
+
+# Build tools
+PyInstaller>=5.7.0
+cx_Freeze>=6.13.0
+
+# Data processing and analysis
+pandas>=1.5.0
+
+# Excel file support
+openpyxl>=3.0.10
+
+# PDF processing and extraction
+pdfplumber>=0.7.0
+PyPDF2>=3.0.0
+
+# Java integration for Microsoft Project files
+# Note: Requires Java Runtime Environment
+jpype1>=1.4.0
+
+# Microsoft Project file format support
+# Note: Requires Java Runtime Environment
+mpxj>=10.0.0
+
+# Calendar and working days calculation
+workalendar>=16.0.0
+
+# Windows-specific dependencies (optional)
+# Uncomment for Windows startup management features
+# pywin32>=306; sys_platform == "win32"
+
+# macOS-specific dependencies (optional)
+# Uncomment for macOS-specific features
+# pyobjc-framework-Cocoa>=9.0; sys_platform == "darwin"
+
+# Note: The following are part of Python standard library:
+# - pathlib
+# - unicodedata
+# - configparser
+# - platform
+# - datetime
+# - subprocess
+# - shutil
+# - os
+# - sys
+# - re
+# - ast
+# - math

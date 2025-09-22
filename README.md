@@ -14,6 +14,7 @@ Baby Project Manager is a simple and effective project management application de
 - **User-Friendly Interface**: Intuitive graphical interface based on PySide6.
 - **Hyperlink Support**: Add and manage hyperlinks within task notes.
 - **Holiday and Weekend Handling**: Accurately calculates task durations considering holidays and weekends in Colombia.
+- **Undo/Redo System**: Complete undo/redo functionality for all task operations using Ctrl+Z and Ctrl+Y.
 
 ## Features
 
@@ -41,23 +42,23 @@ Baby Project Manager is a simple and effective project management application de
   - PySide6-based design
   - Light/dark themes
   - Context menus
-  - Keyboard shortcuts
+  - Keyboard shortcuts (including Ctrl+Z/Ctrl+Y for undo/redo)
   - Multi-language support
 
 ## Requirements
 
-- Python 3.7+
-- Java JDK 8+ (required for processing MPP files - ensure JAVA_HOME is set. See `docs/Configuracion de entorno virtual de Java.txt` for setup instructions)
-- Python libraries (install via `pip install -r requirements_linux.txt`o `pip install -r requirements_windows.txt`):
+- Python 3.8+
+- Java JDK 8+ (required for processing MPP files - ensure JAVA_HOME is set)
+- Python libraries (install via `pip install -r requirements.txt`):
     - PySide6
+    - PyInstaller / cx_Freeze (for building executables)
+    - pandas
+    - openpyxl
     - pdfplumber
+    - PyPDF2
     - jpype1
     - mpxj
-    - openpyxl
-    - pandas
     - workalendar
-    - pycryptodome
-    - PyPDF2
 
 ## Installation
 
@@ -67,33 +68,12 @@ Baby Project Manager is a simple and effective project management application de
    ```
 
 2. **Install dependencies:**  It's recommended to use a virtual environment.
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-.venv\Scripts\activate  # Windows
-pip install -r requirements_linux.txt
-pip install -r requirements_windows.txt
-```
-
-  **Option 1 - Direct Installation:**
-  En Linux:
-  ```bash
-  pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar pycryptodome PyPDF2
-  ```
-  En Windows:
-  ```bash
-  pip install PySide6 pdfplumber jpype1 mpxj pandas openpyxl workalendar pycryptodome PyPDF2 pywin32
-  ```
-
-  **Option 2 - Using requirements.txt:**
-  En Linux:
-  ```bash
-  pip install -r requirements_linux.txt
-  ```
-  En Windows:
-  ```bash
-  pip install -r requirements_windows.txt
-  ```
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate  # Linux/macOS
+   .venv\Scripts\activate  # Windows
+   pip install -r requirements.txt
+   ```
 
 ## File Structure
 
@@ -155,7 +135,13 @@ pip install -r requirements_windows.txt
 
 1. **Run the program**: Navigate to the project directory and run:
    ```bash
-   python src/baby.py
+   cd src
+   python main_window.py
+   ```
+
+   Or alternatively, from the project root:
+   ```bash
+   python src/main.py
    ```
 
 2. Task Management:
@@ -164,6 +150,7 @@ pip install -r requirements_windows.txt
    - Organize with subtasks
    - Customize colors
    - Add notes and hyperlinks
+   - Use Ctrl+Z to undo any operation and Ctrl+Y to redo
 
 3. Gantt Chart:
    - Zoom with Ctrl + mouse wheel
@@ -176,6 +163,12 @@ pip install -r requirements_windows.txt
    - Import from other formats
    - Export data
 
+5. Keyboard Shortcuts:
+   - Ctrl+S: Quick save
+   - Ctrl+Z: Undo last operation
+   - Ctrl+Y: Redo last undone operation
+   - Escape: Clear selection
+
 ## Roadmap (See `ROADMAP.md`)
 
 ## Contribution
@@ -186,9 +179,17 @@ Contributions are welcome!  Please fork the repository and submit a pull request
 
 Developed by Rafael Hernández Bustamante
 
+## Building Executables
+
+To create standalone executables, see `README_BUILD.md` for detailed instructions:
+
+- **Windows**: `python build_yt-dlp_executable_windows.py --clean`
+- **Linux/macOS**: `python build_yt-dlp_executable_linux.py --clean`
+- **Complete Distribution**: `python build_to_distribution.py --clean --test`
+
 ## License
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the `LICENSE` file for details.
 
 ## Contact
 
