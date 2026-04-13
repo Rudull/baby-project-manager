@@ -10,6 +10,7 @@ __pycache__/
 # IDEs
 .idea/
 .vscode/
+.agent/
 *.swp
 *.swo
 
@@ -48,6 +49,10 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# Secrets and Environment Variables
+.env
+secrets.json
 
 # Virtual environments
 venv/

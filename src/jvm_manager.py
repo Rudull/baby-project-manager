@@ -1,7 +1,10 @@
+import logging
 # jvm_manager.py
 import os
 import platform
 import jpype
+
+logger = logging.getLogger("bpm.jvm")
 
 class JVMManager:
     _instance = None
@@ -47,11 +50,11 @@ class JVMManager:
                 jpype.startJVM(jpype.getDefaultJVMPath(), *jvm_args)
 
             cls._jvm_started = True
-            print("JVM iniciada correctamente.")
+            logger.debug("JVM iniciada correctamente.")
             return True
 
         except Exception as e:
-            print(f"Error al iniciar la JVM: {e}")
+            logger.warning(f"Error al iniciar la JVM: {e}")
             return False
 
     @classmethod
@@ -65,4 +68,4 @@ class JVMManager:
                 jpype.shutdownJVM()
                 cls._jvm_started = False
             except Exception as e:
-                print(f"Error al cerrar la JVM: {e}")
+                logger.warning(f"Error al cerrar la JVM: {e}")

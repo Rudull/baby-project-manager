@@ -30,6 +30,9 @@ mpxj>=10.0.0
 # Calendar and working days calculation
 workalendar>=16.0.0
 
+# HTTP requests for updates
+requests>=2.28.0
+
 # Windows-specific dependencies (optional)
 # Uncomment for Windows startup management features
 # pywin32>=306; sys_platform == "win32"

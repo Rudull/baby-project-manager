@@ -1,3 +1,4 @@
+import logging
 #gantt_views.py
 #Módulo encargado de gestionar la visualización del diagrama de Gantt dentro de la
 #aplicación. Contiene todas las clases y widgets relacionados con la presentación
@@ -27,13 +28,15 @@ from PySide6.QtWidgets import (
 
 from hipervinculo import HyperlinkTextEdit
 
+logger = logging.getLogger("bpm.gantt")
+
 class GanttHeaderView(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, header_height=30, parent=None):
         super().__init__(parent)
         self.min_date = None
         self.max_date = None
         self.pixels_per_day = None
-        self.header_height = 20
+        self.header_height = header_height
         self.setFixedHeight(self.header_height)
         self.scroll_offset = 0
         self.update_colors()
@@ -437,7 +440,7 @@ class GanttChart(QWidget):
 
                 if task.is_subtask:
                     # Oscurecer el color para las subtareas
-                    darker_color = task.parent_task.color.darker(120)  # Oscurecer el color en 20%
+                    darker_color = task.color.darker(120)  # Oscurecer el color en 20%
                     painter.setBrush(QBrush(darker_color))
                 else:
                     painter.setBrush(QBrush(task.color))
@@ -545,14 +548,14 @@ class GanttChart(QWidget):
         self.update()  # Asegura que el widget se redibuje cuando cambia de tamaño
 
 class GanttWidget(QWidget):
-    def __init__(self, tasks, row_height, main_window):
+    def __init__(self, tasks, row_height, header_height, main_window):
         super().__init__()
         self.main_window = main_window
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
-
-        self.header = GanttHeaderView()
+ 
+        self.header = GanttHeaderView(header_height=header_height)
         self.header.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # Permitir expansión horizontal
         self.chart = GanttChart(tasks, row_height, self.header.header_height, main_window)
         self.chart.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)  # Permitir expansión horizontal y vertical
@@ -594,6 +597,16 @@ class GanttWidget(QWidget):
             self.pixels_per_day = max(0.1, available_width / days_total)
             self.update_parameters(self.min_date, self.max_date, self.pixels_per_day)
 
+    def wheelEvent(self, event):
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            # Permitir que main_window capture Ctrl+Scroll para realizar el zoom temporal
+            event.ignore()
+        else:
+            # Reenviar el evento nativo a la vista de tabla para desplazar verticalmente
+            # usando el manejo interno de Qt (trackpads, rueda de mouse, pasos integrados)
+            if hasattr(self, 'main_window') and hasattr(self.main_window, 'table_view'):
+                QApplication.sendEvent(self.main_window.table_view.viewport(), event)
+
 class FloatingTaskMenu(QWidget):
     notesChanged = Signal()
     notesCopied = Signal(object)
@@ -628,7 +641,7 @@ class FloatingTaskMenu(QWidget):
         if isinstance(self.task.notes_html, str):
             self.notes_edit.setHtml(self.task.notes_html)
         else:
-            print(f"Error: notes_html debe ser una cadena, pero es {type(self.task.notes_html)}. Asignando cadena vacía.")
+            logger.warning(f"Error: notes_html debe ser una cadena, pero es {type(self.task.notes_html)}. Asignando cadena vacía.")
             self.notes_edit.setHtml("")
 
         self.notes_edit.file_links = self.task.file_links
@@ -738,7 +751,7 @@ class FloatingTaskMenu(QWidget):
 
     def closeEvent(self, event):
         """Manejar el cierre del menú flotante."""
-        print(f"📝 FloatingTaskMenu cerrándose, procesando cambios finales")
+        logger.debug(f"📝 FloatingTaskMenu cerrándose, procesando cambios finales")
         self._process_final_changes()
         super().closeEvent(event)
 
@@ -761,10 +774,10 @@ class FloatingTaskMenu(QWidget):
             current_links != self.original_file_links or
             current_text != original_text):
 
-            print(f"📝 Detectados cambios en notas:")
-            print(f"   HTML original: '{self.original_notes_html[:50]}...'")
-            print(f"   HTML actual: '{current_html[:50]}...'")
-            print(f"   Links cambiaron: {current_links != self.original_file_links}")
+            logger.debug(f"📝 Detectados cambios en notas:")
+            logger.debug(f"   HTML original: '{self.original_notes_html[:50]}...'")
+            logger.debug(f"   HTML actual: '{current_html[:50]}...'")
+            logger.debug(f"   Links cambiaron: {current_links != self.original_file_links}")
 
             # Buscar la ventana principal
             main_window = None
@@ -775,7 +788,7 @@ class FloatingTaskMenu(QWidget):
                 main_window = parent
 
             if main_window and not getattr(main_window, '_loading_file', False):
-                print(f"📝 Creando comando EditNotesCommand")
+                logger.debug(f"📝 Creando comando EditNotesCommand")
                 # Crear comando para cambio de notas
                 from command_system import EditNotesCommand
                 command = EditNotesCommand(
@@ -789,7 +802,7 @@ class FloatingTaskMenu(QWidget):
 
                 main_window.command_manager.execute_command(command)
             else:
-                print(f"📝 No se creó comando: main_window={main_window}, loading={getattr(main_window, '_loading_file', False) if main_window else 'N/A'}")
+                logger.debug(f"📝 No se creó comando: main_window={main_window}, loading={getattr(main_window, '_loading_file', False) if main_window else 'N/A'}")
 
     def _extract_plain_text(self, html_text):
         """Extrae texto plano del HTML."""
@@ -802,7 +815,7 @@ class FloatingTaskMenu(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
-            print(f"📝 Escape presionado, procesando cambios finales")
+            logger.debug(f"📝 Escape presionado, procesando cambios finales")
             self._process_final_changes()
             self.close()
         else:
@@ -810,7 +823,7 @@ class FloatingTaskMenu(QWidget):
 
     def open_file_dialog_for_link(self):
         try:
-            print("Abriendo diálogo de selección de archivo")
+            logger.debug("Abriendo diálogo de selección de archivo")
             options = QFileDialog.DontUseNativeDialog  # Usar diálogo Qt en lugar del nativo
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
@@ -820,17 +833,17 @@ class FloatingTaskMenu(QWidget):
                 options=options
             )
             if file_path:
-                print(f"Archivo seleccionado: {file_path}")
+                logger.debug(f"Archivo seleccionado: {file_path}")
                 # Convertir a ruta normalizada del sistema
                 file_path = os.path.normpath(file_path)
                 file_name = os.path.basename(file_path)
                 self.notes_edit.file_links[file_name] = file_path
                 self.notes_edit.insertHyperlink(file_name)
             else:
-                print("No se seleccionó ningún archivo")
+                logger.debug("No se seleccionó ningún archivo")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Error al seleccionar archivo: {str(e)}")
-            print(f"Excepción en open_file_dialog_for_link: {e}")
+            logger.warning(f"Excepción en open_file_dialog_for_link: {e}")
 
     def open_hyperlink(self, line):
         try:

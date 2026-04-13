@@ -157,4 +157,4 @@ class StateButtonDelegate(QStyledItemDelegate):
         return False  # No hacer nada si es una subtarea
 
     def sizeHint(self, option, index):
-        return QSize(25, 25)
+        return QSize(27, 25)

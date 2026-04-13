@@ -1,3 +1,4 @@
+import logging
 #file_gui.py
 #16
 import sys
@@ -27,6 +28,8 @@ from loading_animation_widget import LoadingAnimationWidget
 from jvm_manager import JVMManager
 from pdf_security_checker import check_pdf_restrictions
 from xlsx_security_checker import check_xlsx_restrictions
+
+logger = logging.getLogger("bpm.file_gui")
 
 class MPPLoaderThread(QThread):
     tasks_extracted = Signal(list, list)
@@ -82,7 +85,7 @@ class MPPLoaderThread(QThread):
             self.tasks_extracted.emit(tasks, task_tree)
 
         except Exception as e:
-            print(f"Error al extraer tareas MPP: {e}")
+            logger.warning(f"Error al extraer tareas MPP: {e}")
             import traceback
             traceback.print_exc()
             self.tasks_extracted.emit([], [])
@@ -109,7 +112,7 @@ class XLSXLoaderThread(QThread):
             self.tasks_extracted.emit(tasks, task_tree)
 
         except Exception as e:
-            print(f"Error al extraer tareas XLSX: {e}")
+            logger.warning(f"Error al extraer tareas XLSX: {e}")
             import traceback
             traceback.print_exc()
             self.tasks_extracted.emit([], [])
@@ -450,7 +453,7 @@ class MainWindow(QMainWindow):
                 self.table.setItem(row, 5, end_item)
 
             except Exception as e:
-                print(f"Error al procesar tarea {row}: {str(e)}")
+                logger.warning(f"Error al procesar tarea {row}: {str(e)}")
                 continue
 
         self.update_task_counter()

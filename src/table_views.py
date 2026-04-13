@@ -1,3 +1,4 @@
+import logging
 #table_views.py
 #contiene la definición del widget de tabla de tareas (TaskTableWidget),
 #el cual proporciona la interfaz de usuario para visualizar, editar,
@@ -23,6 +24,8 @@ from delegates import LineEditDelegate, DateEditDelegate, SpinBoxDelegate, State
 from file_gui import MainWindow as FileGUIWindow
 from startup_manager import StartupManager
 from command_system import ResetColorsCommand, AddTaskCommand
+
+logger = logging.getLogger("bpm.table_views")
 
 class TaskTableWidget(QWidget):
     taskDataChanged = Signal()
@@ -62,8 +65,9 @@ class TaskTableWidget(QWidget):
 
         # Configurar los encabezados
         header = self.table_view.horizontalHeader()
+        header.setFixedHeight(self.main_window.HEADER_HEIGHT if self.main_window else 30)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Columna Nombre
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)  # Columna Nombre
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
@@ -71,12 +75,13 @@ class TaskTableWidget(QWidget):
         self.table_view.verticalHeader().setDefaultSectionSize(self.main_window.ROW_HEIGHT if self.main_window else 25)
         self.table_view.verticalHeader().setMinimumSectionSize(self.main_window.ROW_HEIGHT if self.main_window else 25)
 
-        # Establecer anchos iniciales para las columnas
-        self.table_view.setColumnWidth(1, 150)  # Columna 1: Nombre
-        self.table_view.setColumnWidth(2, 100)  # Columna 2: Fecha inicial
-        self.table_view.setColumnWidth(3, 100)  # Columna 3: Fecha final
-        self.table_view.setColumnWidth(4, 70)   # Columna 4: Días
-        self.table_view.setColumnWidth(5, 40)   # Columna 5: Dedicación
+        # Anchos por defecto — suficientes para leer fechas (dd/MM/yyyy), nombres y valores
+        self._default_col_widths = {1: 300, 2: 110, 3: 110, 4: 50, 5: 40}
+        for col, width in self._default_col_widths.items():
+            self.table_view.setColumnWidth(col, width)
+
+        # Conectar el redimensionamiento de columnas para ajustar el ancho total de la tabla
+        header.sectionResized.connect(self.on_column_resized)
 
         # Botón de menú
         self.menu_button = QPushButton("☰", self)
@@ -103,6 +108,62 @@ class TaskTableWidget(QWidget):
         escape_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self.table_view)
         escape_shortcut.activated.connect(self.clear_selection)
 
+        # Restaurar anchos de columna persistidos (después de que todo esté listo)
+        QTimer.singleShot(0, self.restore_column_widths)
+
+    def get_table_total_width(self) -> int:
+        """Calcula el ancho total de todas las columnas visibles de la tabla."""
+        header = self.table_view.horizontalHeader()
+        total = 0
+        for col in range(header.count()):
+            if not header.isSectionHidden(col):
+                total += header.sectionSize(col)
+        return total
+
+    def on_column_resized(self, logical_index: int, old_size: int, new_size: int) -> None:
+        """Ajusta el ancho de la tabla cuando se redimensiona cualquier columna."""
+        total_width = self.get_table_total_width()
+        # Fijar el ancho en table_view (no en el contenedor padre) para no bloquear
+        # el redimensionamiento horizontal de la ventana principal.
+        self.table_view.setFixedWidth(total_width)
+        # Actualizar el gráfico de Gantt (solo si main_window está completamente inicializado)
+        if self.main_window and hasattr(self.main_window, 'model'):
+            self.main_window.update_gantt_chart(set_unsaved=False)
+        self.adjust_button_size()
+
+    def save_column_widths(self) -> None:
+        """Persiste los anchos actuales de todas las columnas interactivas en la configuración."""
+        if not self.main_window or not hasattr(self.main_window, 'config'):
+            return
+        config = self.main_window.config
+        header = self.table_view.horizontalHeader()
+        for col in range(1, header.count()):  # col 0 es fijo, no se guarda
+            width = header.sectionSize(col)
+            config.set('Columns', f'col_{col}_width', width)
+
+    def restore_column_widths(self) -> None:
+        """Restaura los anchos de columna desde la configuración persistida."""
+        if not self.main_window or not hasattr(self.main_window, 'config'):
+            return
+        config = self.main_window.config
+        header = self.table_view.horizontalHeader()
+        changed = False
+        for col, default_width in self._default_col_widths.items():
+            raw = config.get('Columns', f'col_{col}_width')
+            if raw is not None:
+                try:
+                    width = int(raw)
+                    if width > 0:
+                        header.resizeSection(col, width)
+                        changed = True
+                except ValueError:
+                    pass
+        if changed:
+            total_width = self.get_table_total_width()
+            self.table_view.setFixedWidth(total_width)
+            if self.main_window and hasattr(self.main_window, 'model'):
+                self.main_window.update_gantt_chart(set_unsaved=False)
+
     # Definir el Método para Deseleccionar las Filas Seleccionadas
     def clear_selection(self):
         self.table_view.clearSelection()
@@ -117,7 +178,7 @@ class TaskTableWidget(QWidget):
                 selected_index = selected_rows[0]
                 task_index = selected_index.row()
                 # Asegurarse de que el índice es válido y corresponde a la tarea correcta
-                print(f"Selected task index: {task_index}")
+                logger.debug(f"Selected task index: {task_index}")
                 self.main_window.update_gantt_highlight(task_index)
             else:
                 self.main_window.update_gantt_highlight(None)
@@ -133,8 +194,9 @@ class TaskTableWidget(QWidget):
             border: none;
         }
         """)
-        column_width = 25
-        self.table_view.setColumnWidth(0, column_width)
+        column_width = 27
+        self.table_view.horizontalHeader().setMinimumSectionSize(30)
+        self.table_view.horizontalHeader().resizeSection(0, column_width)
         self.menu_button.setFixedSize(QSize(column_width, self.table_view.horizontalHeader().height()))
         # El botón se posicionará correctamente en adjust_button_size
 
@@ -232,14 +294,25 @@ class TaskTableWidget(QWidget):
             startup_action.setCheckable(True)
             startup_action.setChecked(self.startup_manager.is_startup_enabled())
             startup_action.triggered.connect(self.toggle_startup)
-        config_menu.addAction("Alertas")
+        alerts_action = config_menu.addAction("Alertas...")
+        alerts_action.triggered.connect(self._show_global_alerts_config)
+
+        report_action = menu.addAction("Reportar un problema")
+        report_action.triggered.connect(self.main_window.show_report_dialog)
 
         about_action = menu.addAction("Acerca de")
         about_action.triggered.connect(self.main_window.show_about_dialog)
 
         action = menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
         if action:
-            print(f"Acción seleccionada: {action.text()}")
+            logger.debug(f"Acción seleccionada: {action.text()}")
+
+    def _show_global_alerts_config(self) -> None:
+        if not self.main_window:
+            return
+        from global_alerts_dialog import GlobalAlertsDialog
+        dlg = GlobalAlertsDialog(self.main_window.config, self)
+        dlg.exec()
 
     def adjust_button_size(self):
         header = self.table_view.horizontalHeader()
@@ -338,6 +411,17 @@ class TaskTableWidget(QWidget):
                     file.write(f"DEDICATION: {dedication}\n")
                     file.write(f"COLOR: {task.color.name()}\n")
                     file.write(f"COLLAPSED: {task.is_collapsed}\n")
+                    file.write(f"LINKED_TO_SUBTASKS: {task.linked_to_subtasks}\n")
+                    if task.stored_start_date:
+                        file.write(f"STORED_START: {task.stored_start_date}\n")
+                        file.write(f"STORED_END: {task.stored_end_date}\n")
+                        file.write(f"STORED_DURATION: {task.stored_duration}\n")
+                    if task.alert_threshold_days is not None:
+                        file.write(f"ALERT_THRESHOLD: {task.alert_threshold_days}\n")
+                    if task.alert_snoozed_until is not None:
+                        file.write(f"ALERT_SNOOZED: {task.alert_snoozed_until}\n")
+                    if task.extra_reminders:
+                        file.write(f"REMINDERS: {repr(task.extra_reminders)}\n")
                     file.write("NOTES_HTML_BEGIN\n")
                     file.write(task.notes_html)
                     file.write("\nNOTES_HTML_END\n")
@@ -346,10 +430,10 @@ class TaskTableWidget(QWidget):
                     file.write("\nFILE_LINKS_END\n")
                     file.write("[/TASK]\n\n")
             self.current_file_path = file_path
-            print(f"Archivo guardado en: {file_path}")
+            logger.debug(f"Archivo guardado en: {file_path}")
             return True
         except Exception as e:
-            print(f"Error al guardar el archivo: {e}")
+            logger.warning(f"Error al guardar el archivo: {e}")
             return False
 
     def load_tasks_from_file(self, file_path):
@@ -392,6 +476,26 @@ class TaskTableWidget(QWidget):
                                 task_data['COLOR'] = line[6:].strip()
                             elif line.startswith("COLLAPSED:"):
                                 task_data['COLLAPSED'] = line[10:].strip()
+                            elif line.startswith("LINKED_TO_SUBTASKS:"):
+                                task_data['LINKED_TO_SUBTASKS'] = line[19:].strip()
+                            elif line.startswith("STORED_START:"):
+                                task_data['STORED_START'] = line[13:].strip()
+                            elif line.startswith("STORED_END:"):
+                                task_data['STORED_END'] = line[11:].strip()
+                            elif line.startswith("STORED_DURATION:"):
+                                task_data['STORED_DURATION'] = line[16:].strip()
+                            elif line.startswith("ALERT_THRESHOLD:"):
+                                try:
+                                    task_data['ALERT_THRESHOLD'] = int(line[16:].strip())
+                                except ValueError:
+                                    pass
+                            elif line.startswith("ALERT_SNOOZED:"):
+                                task_data['ALERT_SNOOZED'] = line[14:].strip()
+                            elif line.startswith("REMINDERS:"):
+                                try:
+                                    task_data['REMINDERS'] = ast.literal_eval(line[10:].strip())
+                                except Exception:
+                                    pass
                             elif line == "NOTES_HTML_BEGIN":
                                 reading_notes = True
                                 notes_html = ""
@@ -426,12 +530,21 @@ class TaskTableWidget(QWidget):
                         )
                         # Asegurarse de que 'NOTES_HTML' siempre sea una cadena
                         if not isinstance(task_data['NOTES_HTML'], str):
-                            print(f"Advertencia: 'NOTES_HTML' para la tarea '{task_data.get('NAME', 'Unnamed')}' no es una cadena. Asignando cadena vacía.")
+                            logger.warning(f"Advertencia: 'NOTES_HTML' para la tarea '{task_data.get('NAME', 'Unnamed')}' no es una cadena. Asignando cadena vacía.")
                             task_data['NOTES_HTML'] = ""
 
                         parent_name = task_data.get('PARENT', '').strip()
                         task.is_subtask = bool(parent_name)
                         task.is_collapsed = task_data.get('COLLAPSED', 'False') == 'True'
+                        task.linked_to_subtasks = task_data.get('LINKED_TO_SUBTASKS', 'True') == 'True'
+                        task.stored_start_date = task_data.get('STORED_START')
+                        task.stored_end_date = task_data.get('STORED_END')
+                        task.stored_duration = task_data.get('STORED_DURATION')
+                        
+                        task.alert_threshold_days = task_data.get('ALERT_THRESHOLD')
+                        task.alert_snoozed_until = task_data.get('ALERT_SNOOZED')
+                        task.extra_reminders = task_data.get('REMINDERS', [])
+
                         self.model.tasks.append(task)
                         tasks_with_parents.append((task, parent_name))
             # Establecer relaciones de padres
@@ -443,7 +556,7 @@ class TaskTableWidget(QWidget):
                         task.parent_task = parent_task
                         parent_task.subtasks.append(task)
                     else:
-                        print(f"Tarea padre con nombre '{parent_name}' no encontrada para la tarea '{task.name}'")
+                        logger.debug(f"Tarea padre con nombre '{parent_name}' no encontrada para la tarea '{task.name}'")
             self.model.update_visible_tasks()
             self.model.endResetModel()
             self.current_file_path = file_path
@@ -454,12 +567,12 @@ class TaskTableWidget(QWidget):
                 self.main_window._loading_file = False
                 # Limpiar historial después de cargar exitosamente
                 self.main_window.command_manager.clear()
-            print(f"Archivo cargado desde: {file_path}")
+            logger.debug(f"Archivo cargado desde: {file_path}")
         except Exception as e:
             # Asegurar que la bandera se restablezca incluso en caso de error
             if self.main_window:
                 self.main_window._loading_file = False
-            print(f"Error al cargar el archivo: {e}")
+            logger.warning(f"Error al cargar el archivo: {e}")
 
     def add_task_to_table(self, task_data, editable=False):
         # Determinar si la tarea es padre o subtarea basado en el nivel
@@ -547,25 +660,38 @@ class TaskTableWidget(QWidget):
         )
 
     def show_file_gui(self, file_type=None):
-        # Verificar si ya existe una ventana abierta
+        # Limpiar referencias a ventanas cerradas o destruidas antes de verificar
+        valid_windows = []
         for window in self.main_window.file_gui_windows:
-            if not window.isHidden():
-                window.raise_()
-                window.activateWindow()
-                return
+            try:
+                # Acceder a isVisible() genera RuntimeError si el objeto Qt fue destruido
+                if not window.isHidden():
+                    valid_windows.append(window)
+                    window.raise_()
+                    window.activateWindow()
+                    self.main_window.file_gui_windows = valid_windows
+                    return
+            except RuntimeError:
+                # El objeto C++ subyacente fue destruido: descartar la referencia
+                logger.debug("Ventana de importación destruida detectada, descartando referencia.")
+        self.main_window.file_gui_windows = valid_windows
 
         # Crear nueva ventana
-        self.file_gui_window = FileGUIWindow()
-        self.file_gui_window.tasks_imported.connect(self.import_tasks)
-        self.main_window.file_gui_windows.append(self.file_gui_window)
+        new_window = FileGUIWindow()
+        new_window.tasks_imported.connect(self.import_tasks)
+        self.main_window.file_gui_windows.append(new_window)
 
-        # Conectar señal de cierre para limpieza
-        self.file_gui_window.destroyed.connect(
-            lambda: self.main_window.file_gui_windows.remove(self.file_gui_window)
-            if self.file_gui_window in self.main_window.file_gui_windows else None
-        )
+        # Usar una variable local capturada para evitar referencias a atributos ya destruidos
+        def _on_window_closed():
+            try:
+                if new_window in self.main_window.file_gui_windows:
+                    self.main_window.file_gui_windows.remove(new_window)
+            except RuntimeError:
+                pass
 
-        self.file_gui_window.show()
+        new_window.destroyed.connect(_on_window_closed)
+
+        new_window.show()
 
     def import_tasks(self, tasks):
         for task_data in tasks:
@@ -625,7 +751,7 @@ class TaskTableWidget(QWidget):
             # Si ningún formato coincide
             return QDate.currentDate().toString("dd/MM/yyyy")
         except Exception as e:
-            print(f"Error al convertir fecha '{date_str}': {e}")
+            logger.warning(f"Error al convertir fecha '{date_str}': {e}")
             return QDate.currentDate().toString("dd/MM/yyyy")
 
     def calculate_duration(self, start_date, end_date):
@@ -644,7 +770,7 @@ class TaskTableWidget(QWidget):
 
             return str(business_days)
         except Exception as e:
-               print(f"Error al calcular duración: {e}")
+               logger.warning(f"Error al calcular duración: {e}")
                return "1"
 
     def toggle_startup(self):

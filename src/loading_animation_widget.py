@@ -10,6 +10,15 @@ except ImportError:
     WEBENGINE_AVAILABLE = False
 from PySide6.QtCore import Qt, QUrl
 
+def get_resource_path(relative_path):
+    """Obtiene la ruta absoluta a un recurso, compatible con desarrollo y PyInstaller"""
+    import sys
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    # Si estamos en desarrollo en 'src/', el recurso está en el mismo nivel
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+
+
 class LoadingAnimationWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -27,8 +36,8 @@ class LoadingAnimationWidget(QWidget):
             self.setAttribute(Qt.WA_TranslucentBackground)
             self.web_view.setAttribute(Qt.WA_TranslucentBackground)
 
-            # Obtener la ruta absoluta del HTML
-            html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loading.html")
+            # Obtener la ruta absoluta del HTML usando el helper de recursos
+            html_path = get_resource_path("loading.html")
             html_url = QUrl.fromLocalFile(html_path)
 
             # Cargar el archivo HTML
@@ -43,7 +52,7 @@ class LoadingAnimationWidget(QWidget):
         else:
             # Fallback: crear un label simple con texto de carga
             from PySide6.QtWidgets import QLabel
-            from PySide6.QtCore import Qt
+            # Qt ya está importado a nivel de módulo (línea 11), no re-importar aquí
 
             self.web_view = QLabel("Cargando...")
             self.web_view.setAlignment(Qt.AlignCenter)

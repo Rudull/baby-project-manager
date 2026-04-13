@@ -1,96 +1,160 @@
-#models.py
-#Contiene la lógica y estructuras de datos del modelo de la aplicación.
-#En este archivo se definen las clases y métodos encargados de representar
-#y gestionar las tareas, su información, y su interacción con la tabla de
-#datos subyacente. Estas clases no incluyen lógica de interfaz gráfica,
-#sino que suministran datos y funcionalidades que luego pueden ser utilizados
-#por la vista y el controlador.
-#
+"""models.py
+Contiene la lógica y estructuras de datos del modelo de la aplicación.
+Define las clases para representar tareas y el modelo de tabla de Qt.
+No incluye lógica de interfaz gráfica.
+"""
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-import ast
 
 from PySide6.QtCore import Qt, QDate, QAbstractTableModel, QModelIndex
 from PySide6.QtGui import QColor
 
 from workalendar.america import Colombia
 
+# command_system imports models indirectly (via main_window). To avoid a
+# circular import at module level we import EditTaskCommand here at the top
+# since command_system does NOT import models at module level.
+from command_system import EditTaskCommand  # noqa: E402
+
+logger = logging.getLogger("bpm.models")
+
+
+# ---------------------------------------------------------------------------
+# Task
+# ---------------------------------------------------------------------------
+
+@dataclass(eq=False)
 class Task:
-    def __init__(self, name, start_date, end_date, duration, dedication, color=None, notes="", notes_html="", file_links=None):
-        self.name = name
-        self.start_date = start_date
-        self.end_date = end_date
-        self.duration = duration
-        self.dedication = dedication
-        self.color = color or QColor(34, 163, 159)
-        self.notes = notes
-        self.notes_html = notes_html
-        self.file_links = file_links or {}
-        self.subtasks = []
-        self.is_subtask = False
-        self.parent_task = None
-        self.is_editing = False
-        self.is_collapsed = False
+    """Representa una tarea o subtarea del proyecto.
+
+    Se usa ``eq=False`` para preservar la identidad de objeto (``is``/``not in``
+    list comparisons) que command_system.py requiere en snapshots. QColor tampoco
+    implementa __hash__ de forma compatible con dataclass frozen.
+
+    ``color=None`` sigue siendo válido: ``__post_init__`` lo reemplaza por el
+    color por defecto, manteniendo la API original del constructor.
+    """
+
+    name: str
+    start_date: str
+    end_date: str
+    duration: str
+    dedication: str
+    color: QColor | None = None
+    notes: str = ""
+    notes_html: str = ""
+    file_links: dict[str, str] | None = None
+    subtasks: list[Task] = field(default_factory=list, repr=False)
+    is_subtask: bool = False
+    parent_task: Task | None = field(default=None, repr=False)
+    is_editing: bool = False
+    is_collapsed: bool = False
+    linked_to_subtasks: bool = True
+    stored_start_date: str | None = None
+    stored_end_date: str | None = None
+    stored_duration: str | None = None
+    # Alerts — None means "use global config"; "never" means silenced
+    alert_threshold_days: int | None = None
+    alert_snoozed_until: str | None = None   # "dd/MM/yyyy" or "never"
+    extra_reminders: list[str] = field(default_factory=list)  # exact dates "dd/MM/yyyy"
+
+    def __post_init__(self) -> None:
+        if self.color is None:
+            self.color = QColor(34, 163, 159)
+        if self.file_links is None:
+            self.file_links = {}
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
 
     @property
-    def formatted_name(self):
+    def formatted_name(self) -> str:
         return "       " + self.name if self.is_subtask else self.name
 
     @property
-    def has_notes(self):
+    def has_notes(self) -> bool:
         return bool(self.notes_html and self.notes_html.strip())
 
-    def has_subtasks(self):
+    def has_subtasks(self) -> bool:
         return bool(self.subtasks)
 
-    def toggle_editing(self):
+    # ------------------------------------------------------------------
+    # Mutators
+    # ------------------------------------------------------------------
+
+    def toggle_editing(self) -> None:
         self.is_editing = not self.is_editing
 
-    def set_editing(self, value):
+    def set_editing(self, value: bool) -> None:
         self.is_editing = value
 
-    def toggle_collapsed(self):
+    def toggle_collapsed(self) -> None:
         self.is_collapsed = not self.is_collapsed
 
-    def update_subtasks(self):
+    def update_subtasks(self) -> None:
         if self.parent_task:
-            self.parent_task.subtasks = [task for task in self.parent_task.subtasks if task != self]
+            self.parent_task.subtasks = [
+                t for t in self.parent_task.subtasks if t is not self
+            ]
         for subtask in self.subtasks:
             subtask.parent_task = self
 
-    def copy_notes_from(self, other_task):
-        # Modificar el método para concatenar las notas
+    def copy_notes_from(self, other_task: Task) -> None:
+        """Concatena las notas del ``other_task`` al inicio de las propias."""
         if other_task.notes_html:
-            # Concatenar el HTML de las notas
             if self.notes_html:
                 self.notes_html = other_task.notes_html + "<br><br>" + self.notes_html
             else:
                 self.notes_html = other_task.notes_html
 
         if other_task.notes:
-            # Concatenar el texto plano
             if self.notes:
                 self.notes = other_task.notes + "\n\n" + self.notes
             else:
                 self.notes = other_task.notes
 
-        # Combinar los file_links
         for key, value in other_task.file_links.items():
             if key not in self.file_links:
                 self.file_links[key] = value
 
+
+# ---------------------------------------------------------------------------
+# TaskTableModel
+# ---------------------------------------------------------------------------
+
 class TaskTableModel(QAbstractTableModel):
-    def __init__(self, tasks=None, main_window=None):
-        super(TaskTableModel, self).__init__()
-        self.headers = ["", "Nombre", "Fecha inicial", "Fecha final", "Días", "%"]
-        self.tasks = tasks or []
+    def __init__(
+        self, tasks: list[Task] | None = None, main_window: object | None = None
+    ) -> None:
+        super().__init__()
+        self.headers: list[str] = ["", "Nombre", "Fecha inicial", "Fecha final", "Días", "%"]
+        self.tasks: list[Task] = tasks or []
         self.main_window = main_window
-        self._editing_programmatically = False
+        self._editing_programmatically: bool = False
+
+        # O(n) state — rebuilt on every update_visible_tasks() call
+        self.visible_tasks: list[Task] = []
+        self.visible_to_actual: list[int] = []
+        self.actual_to_visible: dict[int, int] = {}
+        # O(1) task → visible-row lookup (kept in sync with update_visible_tasks)
+        self._task_to_row: dict[int, int] = {}  # id(task) → visible_row
+
         self.update_visible_tasks()
 
-    def update_visible_tasks(self):
+    # ------------------------------------------------------------------
+    # Index management
+    # ------------------------------------------------------------------
+
+    def update_visible_tasks(self) -> None:
         self.visible_tasks = []
         self.visible_to_actual = []
         self.actual_to_visible = {}
+        self._task_to_row = {}
+
         idx = 0
         visible_idx = 0
         while idx < len(self.tasks):
@@ -98,51 +162,69 @@ class TaskTableModel(QAbstractTableModel):
             self.visible_tasks.append(task)
             self.visible_to_actual.append(idx)
             self.actual_to_visible[idx] = visible_idx
+            self._task_to_row[id(task)] = visible_idx
             idx += 1
             visible_idx += 1
             if not task.is_subtask and task.is_collapsed:
                 while idx < len(self.tasks) and self.tasks[idx].is_subtask:
                     idx += 1
 
-    def rowCount(self, parent=QModelIndex()):
+    def _get_visible_row(self, task: Task) -> int:
+        """Retorna la fila visible de ``task`` en O(1). Lanza KeyError si no visible."""
+        return self._task_to_row[id(task)]
+
+    # ------------------------------------------------------------------
+    # QAbstractTableModel interface
+    # ------------------------------------------------------------------
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self.visible_tasks)
 
-    def columnCount(self, parent=QModelIndex()):
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self.headers)
 
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
         if not index.isValid():
             return None
 
         task = self.visible_tasks[index.row()]
         column = index.column()
 
-        if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
+        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
             if column == 0:
-                return ""  # Para el botón de estado, se usará un delegado
-            elif column == 1:
-                return task.formatted_name  # Cambia aquí
-            elif column == 2:
+                return ""
+            if column == 1:
+                return task.formatted_name
+            if column == 2:
                 return task.start_date
-            elif column == 3:
+            if column == 3:
                 return task.end_date
-            elif column == 4:
+            if column == 4:
                 return task.duration
-            elif column == 5:
+            if column == 5:
                 return task.dedication
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            if column in (2, 3, 4, 5):
+                return int(Qt.AlignmentFlag.AlignCenter)
+            return int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         elif role == Qt.ItemDataRole.UserRole:
-            return task  # Para almacenar el objeto Task
+            return task
         elif role == Qt.ItemDataRole.BackgroundRole:
             if column == 1:
                 return task.color
         return None
 
-    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> object:
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.headers[section]
         return None
 
-    def flags(self, index):
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
         flags = super().flags(index)
@@ -150,9 +232,12 @@ class TaskTableModel(QAbstractTableModel):
             flags |= Qt.ItemFlag.ItemIsEditable
         return flags
 
-    def insertTask(self, task, actual_position=None):
+    # ------------------------------------------------------------------
+    # CRUD
+    # ------------------------------------------------------------------
+
+    def insertTask(self, task: Task, actual_position: int | None = None) -> None:
         if actual_position is not None:
-            # Calcular la posición visible correspondiente
             position = self.actual_to_visible.get(actual_position, self.rowCount())
         else:
             actual_position = len(self.tasks)
@@ -162,7 +247,7 @@ class TaskTableModel(QAbstractTableModel):
         self.update_visible_tasks()
         self.endInsertRows()
 
-    def removeTask(self, position):
+    def removeTask(self, position: int) -> bool:
         if 0 <= position < self.rowCount():
             actual_position = self.visible_to_actual[position]
             self.beginRemoveRows(QModelIndex(), position, position)
@@ -172,235 +257,308 @@ class TaskTableModel(QAbstractTableModel):
             return True
         return False
 
-    def getTask(self, row):
+    def getTask(self, row: int) -> Task | None:
         if 0 <= row < self.rowCount():
             return self.visible_tasks[row]
         return None
 
-    def move_block_down(self, start_row, block_size, insertion_row):
-            """
-            Mueve un bloque de tareas hacia abajo en el modelo.
-            start_row: La fila de inicio del bloque.
-            block_size: El tamaño del bloque de tareas (incluye la tarea y subtareas).
-            insertion_row: La fila de inserción donde se moverá el bloque.
-            """
-            if start_row < 0 or start_row + block_size > self.rowCount() or insertion_row > self.rowCount():
-                return False  # Validar si las filas son válidas.
+    # ------------------------------------------------------------------
+    # Move
+    # ------------------------------------------------------------------
 
-            self.beginMoveRows(QModelIndex(), start_row, start_row + block_size - 1, QModelIndex(), insertion_row)
-
-            # Extraer el bloque de tareas desde start_row hasta start_row + block_size
-            moving_tasks = self.visible_tasks[start_row:start_row + block_size]
-            # Eliminar el bloque de tareas original
-            del self.visible_tasks[start_row:start_row + block_size]
-
-            # Insertar el bloque en la nueva posición
-            self.visible_tasks[insertion_row:insertion_row] = moving_tasks
-
-            self.update_visible_tasks()
-            self.endMoveRows()
-            return True
-
-    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
-            if not index.isValid():
-                return False
-
-            task = self.visible_tasks[index.row()]
-            column = index.column()
-
-            if role == Qt.ItemDataRole.EditRole:
-                # Si estamos editando programáticamente (desde un comando), no crear nuevo comando
-                if self._editing_programmatically:
-                    return self._set_data_direct(task, column, value, index)
-
-                # Si tenemos acceso al main_window y no estamos cargando archivo, crear comando
-                if (self.main_window and
-                    hasattr(self.main_window, 'command_manager') and
-                    not getattr(self.main_window, '_loading_file', False)):
-
-                    # Crear comando de edición con valores anteriores
-                    old_value = self._get_current_value(task, column)
-                    new_value = str(value)
-
-                    if old_value != new_value:
-                        from command_system import EditTaskCommand
-                        field_map = {1: 'name', 2: 'start_date', 3: 'end_date',
-                                   4: 'duration', 5: 'dedication'}
-
-                        if column in field_map:
-                            command = EditTaskCommand(
-                                self.main_window,
-                                index.row(),
-                                field_map[column],
-                                old_value,
-                                new_value
-                            )
-                            self.main_window.command_manager.execute_command(command)
-                            return True
-
-                # Fallback para edición directa
-                return self._set_data_direct(task, column, value, index)
+    def move_block_down(
+        self, start_row: int, block_size: int, insertion_row: int
+    ) -> bool:
+        """Mueve un bloque de tareas hacia abajo en el modelo."""
+        if (
+            start_row < 0
+            or start_row + block_size > self.rowCount()
+            or insertion_row > self.rowCount()
+        ):
             return False
 
-    def _get_current_value(self, task, column):
-        """Obtiene el valor actual de la tarea para la columna especificada."""
-        if column == 1:
-            return task.name
-        elif column == 2:
-            return task.start_date
-        elif column == 3:
-            return task.end_date
-        elif column == 4:
-            return task.duration
-        elif column == 5:
-            return task.dedication
-        return ""
+        self.beginMoveRows(
+            QModelIndex(),
+            start_row,
+            start_row + block_size - 1,
+            QModelIndex(),
+            insertion_row,
+        )
+        moving_tasks = self.visible_tasks[start_row : start_row + block_size]
+        del self.visible_tasks[start_row : start_row + block_size]
+        self.visible_tasks[insertion_row:insertion_row] = moving_tasks
+        self.update_visible_tasks()
+        self.endMoveRows()
+        return True
 
-    def _set_data_direct(self, task, column, value, index):
+    # ------------------------------------------------------------------
+    # setData / data helpers
+    # ------------------------------------------------------------------
+
+    def setData(
+        self, index: QModelIndex, value: object, role: int = Qt.ItemDataRole.EditRole
+    ) -> bool:
+        if not index.isValid():
+            return False
+
+        task = self.visible_tasks[index.row()]
+        column = index.column()
+
+        if role == Qt.ItemDataRole.EditRole:
+            if self._editing_programmatically:
+                return self._set_data_direct(task, column, value, index)
+
+            if (
+                self.main_window
+                and hasattr(self.main_window, "command_manager")
+                and not getattr(self.main_window, "_loading_file", False)
+            ):
+                old_value = self._get_current_value(task, column)
+                new_value = str(value)
+
+                if old_value != new_value:
+                    # EditTaskCommand is imported at module level (top of file).
+                    # command_system does NOT import models, so there is no
+                    # circular dependency despite the coupling direction.
+                    field_map = {
+                        1: "name",
+                        2: "start_date",
+                        3: "end_date",
+                        4: "duration",
+                        5: "dedication",
+                    }
+                    if column in field_map:
+                        command = EditTaskCommand(
+                            self.main_window,  # type: ignore[arg-type]
+                            index.row(),
+                            field_map[column],
+                            old_value,
+                            new_value,
+                        )
+                        self.main_window.command_manager.execute_command(command)
+                        return True
+
+            return self._set_data_direct(task, column, value, index)
+        return False
+
+    def _get_current_value(self, task: Task, column: int) -> str:
+        """Obtiene el valor actual de la tarea para la columna especificada."""
+        mapping = {
+            1: task.name,
+            2: task.start_date,
+            3: task.end_date,
+            4: task.duration,
+            5: task.dedication,
+        }
+        return mapping.get(column, "")
+
+    def _set_data_direct(
+        self, task: Task, column: int, value: object, index: QModelIndex
+    ) -> bool:
         """Establece datos directamente sin crear comandos."""
         if column == 1:
             task.name = str(value)
         elif column == 2:
             task.start_date = str(value)
-            # Recalcular la duración al cambiar la fecha inicial
             self.recalculate_duration(task)
+            if task.is_subtask and task.parent_task:
+                self.update_parent_linked_duration(task.parent_task)
         elif column == 3:
             task.end_date = str(value)
-            # Recalcular la duración al cambiar la fecha final
             self.recalculate_duration(task)
+            if task.is_subtask and task.parent_task:
+                self.update_parent_linked_duration(task.parent_task)
         elif column == 4:
             task.duration = str(value)
-            # Recalcular la fecha final al cambiar la duración
             self.recalculate_end_date(task)
+            if task.is_subtask and task.parent_task:
+                self.update_parent_linked_duration(task.parent_task)
         elif column == 5:
             task.dedication = str(value)
 
-        task.is_editing = False  # Reset is_editing after editing
+        task.is_editing = False
         self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
         return True
 
-    def set_data_programmatically(self, task, field, value):
+    def set_data_programmatically(self, task: Task, field: str, value: object) -> None:
         """Permite establecer datos programáticamente sin crear comandos."""
         self._editing_programmatically = True
         try:
             setattr(task, field, value)
 
-            # Recalcular dependencias si es necesario
-            if field == 'start_date' or field == 'end_date':
+            if field in ("start_date", "end_date"):
                 self.recalculate_duration(task)
-            elif field == 'duration':
+                if task.is_subtask and task.parent_task:
+                    self.update_parent_linked_duration(task.parent_task)
+            elif field == "duration":
                 self.recalculate_end_date(task)
+                if task.is_subtask and task.parent_task:
+                    self.update_parent_linked_duration(task.parent_task)
 
-            # Encontrar el índice de la tarea y emitir señal
             try:
-                row = self.visible_tasks.index(task)
-                column_map = {'name': 1, 'start_date': 2, 'end_date': 3, 'duration': 4, 'dedication': 5}
+                row = self._get_visible_row(task)  # O(1)
+                column_map = {
+                    "name": 1,
+                    "start_date": 2,
+                    "end_date": 3,
+                    "duration": 4,
+                    "dedication": 5,
+                }
                 if field in column_map:
-                    index = self.index(row, column_map[field])
-                    self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole])
-            except ValueError:
-                pass
-
+                    idx = self.index(row, column_map[field])
+                    self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.EditRole])
+            except KeyError:
+                logger.debug(
+                    "Task '%s' not in visible rows during set_data_programmatically", task.name
+                )
         finally:
             self._editing_programmatically = False
 
-    def recalculate_duration(self, task):
-        # Parsear las fechas de inicio y fin
+    # ------------------------------------------------------------------
+    # Date / duration recalculation
+    # Note: the day-loop is O(calendar_days) by design (workalendar).
+    # For very long projects caching holiday sets could help, but correctness
+    # is prioritised over micro-optimisation here.
+    # ------------------------------------------------------------------
+
+    def recalculate_duration(self, task: Task) -> None:
         start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
         end_date = QDate.fromString(task.end_date, "dd/MM/yyyy")
         if not start_date.isValid() or not end_date.isValid():
             return
         if end_date < start_date:
-            # Ajustar la fecha final para que sea igual a la fecha inicial
             end_date = start_date
             task.end_date = end_date.toString("dd/MM/yyyy")
-        # Calcular los días laborables entre las fechas
+
         cal = Colombia()
         business_days = 0
-        current_date = start_date.toPython()
-        end_date_python = end_date.toPython()
-        while current_date <= end_date_python:
-            if cal.is_working_day(current_date):
+        current = start_date.toPython()
+        end = end_date.toPython()
+        while current <= end:
+            if cal.is_working_day(current):
                 business_days += 1
-            current_date += timedelta(days=1)
+            current += timedelta(days=1)
         task.duration = str(business_days)
-        # Emitir señal de cambio para la columna de duración
-        row = self.visible_tasks.index(task)
-        duration_index = self.index(row, 4)
-        self.dataChanged.emit(duration_index, duration_index, [Qt.ItemDataRole.DisplayRole])
 
-    def recalculate_end_date(self, task):
-        # Parsear la fecha de inicio
+        try:
+            row = self._get_visible_row(task)  # O(1)
+            self.dataChanged.emit(
+                self.index(row, 4), self.index(row, 4), [Qt.ItemDataRole.DisplayRole]
+            )
+        except KeyError:
+            pass
+
+    def recalculate_end_date(self, task: Task) -> None:
         start_date = QDate.fromString(task.start_date, "dd/MM/yyyy")
         if not start_date.isValid():
             return
-        # Obtener la duración
         if not task.duration.isdigit():
             return
+
         target_days = int(task.duration)
-        # Calcular la fecha final basada en la duración
         cal = Colombia()
         business_days = 0
-        end_date = start_date.toPython()
+        end = start_date.toPython()
         while business_days < target_days:
-            if cal.is_working_day(end_date):
+            if cal.is_working_day(end):
                 business_days += 1
             if business_days < target_days:
-                end_date += timedelta(days=1)
-        task.end_date = QDate(end_date).toString("dd/MM/yyyy")
-        # Emitir señal de cambio para la columna de fecha final
-        row = self.visible_tasks.index(task)
-        end_date_index = self.index(row, 3)
-        self.dataChanged.emit(end_date_index, end_date_index, [Qt.ItemDataRole.DisplayRole])
+                end += timedelta(days=1)
+        task.end_date = QDate(end).toString("dd/MM/yyyy")
 
-    def sort(self, column, order=Qt.SortOrder.AscendingOrder):
-        if column in [1, 2, 3]:  # Columnas "Nombre", "Fecha inicial" y "Fecha final"
-            self.layoutAboutToBeChanged.emit()
-
-            # Crear bloques de tareas (tarea padre con sus subtareas)
-            blocks = []
-            i = 0
-            while i < len(self.tasks):
-                task = self.tasks[i]
-                if not task.is_subtask:
-                    # Tarea padre, agregar sus subtareas
-                    block = [task]
-                    j = i + 1
-                    while j < len(self.tasks) and self.tasks[j].is_subtask:
-                        block.append(self.tasks[j])
-                        j += 1
-                    # Ordenar las subtareas dentro del bloque si lo deseas
-                    parent_task = block[0]
-                    subtasks = block[1:]
-                    # Ordenar las subtareas dentro del bloque
-                    subtasks.sort(key=self.get_sort_key(column), reverse=(order == Qt.SortOrder.DescendingOrder))
-                    block = [parent_task] + subtasks
-                    blocks.append(block)
-                    i = j
-                else:
-                    # Si encontramos una subtarea sin padre, la tratamos como bloque individual
-                    blocks.append([task])
-                    i += 1
-
-            # Ordenar las tareas padres entre sí
-            reverse = (order == Qt.SortOrder.DescendingOrder)
-            blocks.sort(key=lambda block: self.get_sort_key(column)(block[0]), reverse=reverse)
-
-            # Reconstruir la lista de tareas a partir de los bloques ordenados
-            self.tasks = [task for block in blocks for task in block]
-
-            self.update_visible_tasks()
-            self.layoutChanged.emit()
-        else:
-            # Si se hace clic en otra columna, no hacemos nada o implementamos otro ordenamiento
+        try:
+            row = self._get_visible_row(task)  # O(1)
+            self.dataChanged.emit(
+                self.index(row, 3), self.index(row, 3), [Qt.ItemDataRole.DisplayRole]
+            )
+        except KeyError:
             pass
 
-    def get_sort_key(self, column):
-        if column == 1:  # Nombre
+    def update_parent_linked_duration(self, parent_task: Task) -> None:
+        """Actualiza la duración y fechas de la tarea padre basándose en sus subtareas."""
+        if not parent_task or not parent_task.subtasks or not parent_task.linked_to_subtasks:
+            return
+
+        min_start: QDate | None = None
+        max_end: QDate | None = None
+
+        for subtask in parent_task.subtasks:
+            s_date = QDate.fromString(subtask.start_date, "dd/MM/yyyy")
+            e_date = QDate.fromString(subtask.end_date, "dd/MM/yyyy")
+
+            if s_date.isValid():
+                if min_start is None or s_date < min_start:
+                    min_start = s_date
+            if e_date.isValid():
+                if max_end is None or e_date > max_end:
+                    max_end = e_date
+
+        if min_start and max_end:
+            new_start_str = min_start.toString("dd/MM/yyyy")
+            new_end_str = max_end.toString("dd/MM/yyyy")
+
+            if parent_task.start_date != new_start_str or parent_task.end_date != new_end_str:
+                self._editing_programmatically = True
+                try:
+                    parent_task.start_date = new_start_str
+                    parent_task.end_date = new_end_str
+                    self.recalculate_duration(parent_task)
+
+                    try:
+                        row = self._get_visible_row(parent_task)
+                        idx_start = self.index(row, 2)
+                        idx_end = self.index(row, 3)
+                        self.dataChanged.emit(idx_start, idx_end, [Qt.ItemDataRole.EditRole])
+                    except KeyError:
+                        pass
+                finally:
+                    self._editing_programmatically = False
+
+    # ------------------------------------------------------------------
+    # Sort
+    # ------------------------------------------------------------------
+
+    def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
+        if column not in (1, 2, 3):
+            return
+
+        self.layoutAboutToBeChanged.emit()
+
+        blocks: list[list[Task]] = []
+        i = 0
+        while i < len(self.tasks):
+            task = self.tasks[i]
+            if not task.is_subtask:
+                block: list[Task] = [task]
+                j = i + 1
+                while j < len(self.tasks) and self.tasks[j].is_subtask:
+                    block.append(self.tasks[j])
+                    j += 1
+                parent_task = block[0]
+                subtasks = block[1:]
+                subtasks.sort(
+                    key=self.get_sort_key(column),
+                    reverse=(order == Qt.SortOrder.DescendingOrder),
+                )
+                blocks.append([parent_task] + subtasks)
+                i = j
+            else:
+                blocks.append([task])
+                i += 1
+
+        blocks.sort(
+            key=lambda blk: self.get_sort_key(column)(blk[0]),
+            reverse=(order == Qt.SortOrder.DescendingOrder),
+        )
+        self.tasks = [task for block in blocks for task in block]
+        self.update_visible_tasks()
+        self.layoutChanged.emit()
+
+    def get_sort_key(self, column: int):  # type: ignore[return]
+        if column == 1:
             return lambda task: task.name.lower()
-        elif column == 2:  # Fecha inicial
+        if column == 2:
             return lambda task: QDate.fromString(task.start_date, "dd/MM/yyyy")
-        elif column == 3:  # Fecha final
+        if column == 3:
             return lambda task: QDate.fromString(task.end_date, "dd/MM/yyyy")
-        else:
-            return lambda task: task.name.lower()  # Valor por defecto
+        return lambda task: task.name.lower()

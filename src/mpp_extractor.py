@@ -1,3 +1,4 @@
+import logging
 #mpp_extractor.py
 #7
 import sys
@@ -5,6 +6,8 @@ import os
 import jpype
 import mpxj
 from datetime import datetime
+
+logger = logging.getLogger("bpm.mpp")
 
 class MPPReader:
     def __init__(self):
@@ -35,5 +38,5 @@ class MPPReader:
             else:
                 return str(date)
         except Exception as e:
-            print(f"Error al formatear fecha: {str(e)}")
+            logger.warning(f"Error al formatear fecha: {str(e)}")
             return str(date)
