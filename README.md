@@ -1,200 +1,156 @@
 # Baby Project Manager
 
-## Description
+[![Versión](https://img.shields.io/badge/version-0.5.1-blue.svg)](https://github.com/Rudull/baby-project-manager/releases)
+[![Licencia](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 
-Baby Project Manager is a simple and effective project management application designed to help users manage tasks and create Gantt charts. It allows organizing, visualizing, and scheduling tasks in an intuitive and user-friendly way. It supports data import and export from various file formats, including `.bpm`, `.xlsx`, `.mpp`, and `.pdf`.
-
-## Features
-
-- **Task Management**: Create, edit, delete, and duplicate tasks, including subtasks.  Tasks can be visually organized with hierarchical indentation and customizable colors.
-- **Gantt Charts**: Interactive Gantt chart visualization of scheduled tasks with support for zooming and scrolling.
-- **File Support**: Import and export tasks from and to `.mpp`, `.xlsx`, and `.pdf` files.  The application uses a custom `.bpm` format for efficient data storage.
-- **Filtering and Search**: Filter and search tasks by keywords, including and excluding specific terms.
-- **Drag and Drop**: Drag and drop functionality for reordering tasks.
-- **User-Friendly Interface**: Intuitive graphical interface based on PySide6.
-- **Hyperlink Support**: Add and manage hyperlinks within task notes.
-- **Holiday and Weekend Handling**: Accurately calculates task durations considering holidays and weekends in Colombia.
-- **Undo/Redo System**: Complete undo/redo functionality for all task operations using Ctrl+Z and Ctrl+Y.
-
-## Features
-
-- **Task Management**:
-  - Create, edit, delete, and duplicate tasks and subtasks
-  - Visual organization with hierarchical indentation
-  - Customizable colors
-  - Support for notes with hyperlinks
-  - Automatic duration calculation considering working days
-
-- **Gantt Chart**:
-  - Interactive schedule visualization
-  - Mouse wheel zoom
-  - Full, yearly, semi-annual, quarterly, and monthly views
-  - Highlighted "today" line
-  - Synchronization with Colombian calendar
-
-- **File Support**:
-  - Native `.bpm` format for efficient storage
-  - Import from `.mpp`, `.xlsx`, and `.pdf`
-  - Export to various formats
-  - File security verification
-
-- **Intuitive Interface**:
-  - PySide6-based design
-  - Light/dark themes
-  - Context menus
-  - Keyboard shortcuts (including Ctrl+Z/Ctrl+Y for undo/redo)
-  - Multi-language support
-
-## Requirements
-
-- Python 3.8+
-- Java JDK 8+ (required for processing MPP files - ensure JAVA_HOME is set)
-- Python libraries (install via `pip install -r requirements.txt`):
-    - PySide6
-    - PyInstaller / cx_Freeze (for building executables)
-    - pandas
-    - openpyxl
-    - pdfplumber
-    - PyPDF2
-    - jpype1
-    - mpxj
-    - workalendar
-
-## Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Rudull/baby-project-manager
-   ```
-
-2. **Install dependencies:**  It's recommended to use a virtual environment.
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate  # Linux/macOS
-   .venv\Scripts\activate  # Windows
-   pip install -r requirements.txt
-   ```
-
-## File Structure
-
-```plaintext
-├── main_window.py
-│   └── MainWindow: "Ventana principal de la aplicación."
-├── startup_manager.py
-│   ├── StartupManager: "Manejador de inicio automatico de la aplicación."
-├── config_manager.py
-│   ├── ConfigManager: "Maneja la recuurrencia de la aplicación."
-├── about_dialog.py
-│   ├── AboutDialog(QDialog): "Maneja la ventana de información de la aplicación."
-├── delegates.py
-│   ├── LineEditDelegate: "Delegate para editar celdas con QLineEdit."
-│   ├── DateEditDelegate: "Delegate para editar celdas con QDateEdit."
-│   ├── SpinBoxDelegate: "Delegate para editar celdas con QSpinBox."
-│   └── StateButtonDelegate: "Delegate para mostrar botones de estado en celdas."
-├── gantt_views.py
-│   ├── GanttHeaderView: "Vista del encabezado del diagrama de Gantt."
-│   ├── GanttChart: "Widget que dibuja el gráfico de Gantt."
-│   ├── GanttWidget: "Widget contenedor del encabezado y el gráfico de Gantt."
-│   └── FloatingTaskMenu: "Menú flotante para editar notas de una tarea."
-├── models.py
-│   ├── Task: "Clase que representa una tarea."
-│   └── TaskTableModel: "Modelo para la tabla de tareas."
-├── hipervinculo.py
-│   ├── HyperlinkTextEdit: "QTextEdit que maneja hipervínculos."
-│   └── NotesApp: "Aplicación de ejemplo que usa HyperlinkTextEdit."
-├── file_gui.py
-│   ├── MPPLoaderThread: "Hilo para cargar y extraer tareas de archivos MPP."
-│   ├── XLSXLoaderThread: "Hilo para cargar y extraer tareas de archivos XLSX."
-│   └── MainWindow: "Ventana principal para la carga y filtro de archivos."
-├── loading_animation_widget.py
-│   └── LoadingAnimationWidget: "Widget para mostrar una animación de carga."
-├── loading.html
-│   └── "Archivo HTML para mostrar una animación de carga."
-├── filter_util.py
-│   ├── normalize_string: "Función para normalizar strings (quitar acentos y minúsculas)."
-│   ├── is_start_end_task: "Función para identificar tareas de inicio o fin."
-│   └── filter_tasks: "Función para filtrar una lista de tareas por términos."
-├── jvm_manager.py
-│   └── JVMManager: "Clase singleton para gestionar el ciclo de vida de la JVM."
-├── table_views.py
-│   └── TaskTableWidget: "Widget para la tabla de tareas."
-├── mpp_extractor.py
-│   └── MPPReader: "Clase para extraer datos de archivos MPP."
-├── pdf_extractor.py
-│   ├── TaskTreeNode: "Clase para representar un nodo en el árbol de tareas."
-│   └── PDFLoaderThread: "Hilo para cargar y extraer tareas de archivos PDF."
-├── pdf_security_checker.py
-│   └── check_pdf_restrictions: "Función para verificar restricciones de seguridad en PDFs."
-├── xlsx_extractor.py
-│   └── XLSXReader: "Clase para extraer datos de archivos XLSX."
-└── xlsx_security_checker.py
-    └── check_xlsx_restrictions: "Función para verificar restricciones de seguridad en archivos XLSX."
-  ```
-
-## Usage
-
-1. **Run the program**: Navigate to the project directory and run:
-   ```bash
-   cd src
-   python main_window.py
-   ```
-
-   Or alternatively, from the project root:
-   ```bash
-   python src/main.py
-   ```
-
-2. Task Management:
-   - Use "Add New Task" or context menu
-   - Set start/end dates
-   - Organize with subtasks
-   - Customize colors
-   - Add notes and hyperlinks
-   - Use Ctrl+Z to undo any operation and Ctrl+Y to redo
-
-3. Gantt Chart:
-   - Zoom with Ctrl + mouse wheel
-   - Drag tasks
-   - Change time view
-   - Expand/collapse groups
-
-4. Files:
-   - Save in .bpm format
-   - Import from other formats
-   - Export data
-
-5. Keyboard Shortcuts:
-   - Ctrl+S: Quick save
-   - Ctrl+Z: Undo last operation
-   - Ctrl+Y: Redo last undone operation
-   - Escape: Clear selection
-
-## Roadmap (See `ROADMAP.md`)
-
-## Contribution
-
-Contributions are welcome!  Please fork the repository and submit a pull request.
-
-## Créditos
-
-Developed by Rafael Hernández Bustamante
-
-## Building Executables
-
-To create standalone executables, see `README_BUILD.md` for detailed instructions:
-
-- **Windows**: `python build_yt-dlp_executable_windows.py --clean`
-- **Linux/macOS**: `python build_yt-dlp_executable_linux.py --clean`
-- **Complete Distribution**: `python build_to_distribution.py --clean --test`
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the `LICENSE` file for details.
-
-## Contact
-
-For inquiries or more information about the project, you can open an issue in the repository or contact the authors directly.
+**Baby Project Manager** es una herramienta para la gestión de proyectos y creación de diagramas de Gantt. Diseñada para ofrecer una experiencia intuitiva, permite organizar, visualizar y programar tareas de manera profesional sin complicaciones.
 
 ---
 
-I hope this guide helps you get started with Baby Project Manager. Enjoy managing your projects!
+## Propuesta de Valor
+
+Baby Project Manager se destaca por su ligereza y enfoque en lo esencial:
+- **Claridad Visual**: Diagramas de Gantt interactivos sincronizados con la lista de tareas.
+- **Interoperabilidad**: Importación desde Microsoft Project (.mpp), Excel (.xlsx) y PDF.
+- **Control Total**: Sistema completo de Deshacer/Rehacer (Undo/Redo) y alertas de hitos.
+- **Localización**: Soporte nativo para festivos de Colombia: destacados en la vista de calendario, resaltados en rojo en los popups de selección de fechas, y considerados en el cálculo de días hábiles restantes.
+
+---
+
+## Vista Previa
+
+### Interfaz Principal
+![Baby Project Manager - Pantalla Principal](assets/1_baby_project_manager_0-4-3.png)
+
+### Importación de Cronogramas
+![Ventana de Importación](assets/2_import_0-4-3.png)
+
+---
+
+## Características Principales
+
+- **Gestión Jerárquica**: Creación de tareas y subtareas con niveles de indentación.
+- **Diagramas de Gantt Dinámicos**: Zoom (Ctrl+Scroll), desplazamiento horizontal (Shift+Scroll), hoy siempre visible y anclado durante zoom, vistas personalizadas (Completa, Año, 6/3/1 mes), y **persistencia del nivel de zoom** entre sesiones.
+- **Interfaz Persistente**: La aplicación recuerda la posición y tamaño de la ventana, estado maximizado, nivel de zoom del Gantt, y modo de vista del calendario (mes/año) al cerrar y abrir nuevamente.
+- **Formatos Soportados**:
+  - **Nativo**: .bpm (eficiente).
+  - **Importación**: .mpp, .xlsx, .pdf.
+  - **Exportación**: Excel y PDF.
+- **Sistema de Alertas**: Recordatorios por tarea y alertas globales de vencimiento.
+- **Personalización**: Colores por tarea, notas con hipervínculos y temas claro/oscuro.
+- **Productividad**: Atajos de teclado y menús contextuales rápidos.
+
+---
+
+## Instalación y Configuración
+
+### 1. Clona el repositorio
+```bash
+git clone https://github.com/Rudull/baby-project-manager
+```
+
+### 2. Configura el entorno (Recomendado: Conda/Anaconda)
+Este proyecto utiliza librerías de Java y Qt, por lo que Conda es la forma más sencilla de gestionar todas las dependencias:
+
+```bash
+# Crear el entorno desde el archivo de configuración
+conda env create -f environment_windows.yaml
+
+# Activar el entorno
+conda activate baby
+```
+
+*Nota: La configuración de Conda ya incluye el JDK de Java necesario para desarrollo.*
+
+### 3. Configura los secretos
+- Copia `.env.example` como `.env` y añade tu URL de Webhook de Discord para habilitar los reportes directos desde la app. Esto es necesario tanto para desarrollo como para que el ejecutable compilado tenga soporte de reportes.
+
+### 4. Ejecuta la aplicación
+```bash
+python src/main.py
+```
+
+---
+
+## Generación del Ejecutable (Build)
+
+Baby Project Manager soporta dos compiladores con diferente comportamiento:
+
+### Opción 1: Nuitka (Recomendado)
+
+Produce código C compilado nativo con menos falsos positivos de antivirus:
+
+```powershell
+conda activate baby
+python build_system/build_nuitka_windows.py --clean
+```
+
+### Opción 2: PyInstaller (Alternativo)
+
+Empaquetador tradicional de bytecode Python:
+
+```powershell
+conda activate baby
+python build_system/build_pyinstaller_windows.py --clean
+```
+
+### Compilación Interactiva (Recomendada)
+
+Menú automático que permite elegir compilador, formato de salida y opciones:
+
+```powershell
+conda activate baby
+python build_system/build_to_distribution.py
+```
+
+Esta es la forma recomendada para generar una distribución lista para desplegar.
+
+**Importante para el Usuario Final:**
+El archivo `.exe` generado requiere:
+1. **Visual C++ Redistributable 2015-2022**: [Descargar](https://aka.ms/vs/17/release/vc_redist.x64.exe) (crítico para ejecutar la aplicación)
+2. **Java JDK** instalado y configurado en el `PATH` (para abrir archivos de Microsoft Project .mpp)
+
+Consulta [docs/Configuracion de entorno virtual de Java.txt](docs/Configuracion de entorno virtual de Java.txt) para más detalles sobre la configuración de Java.
+
+---
+
+## Reporte de Problemas
+
+La aplicación incluye un sistema dual para reportar errores:
+- **GitHub Issues**: Para usuarios con cuenta de GitHub.
+- **Reporte Directo (Discord)**: Envío de reportes anónimos directamente desde la aplicación (requiere que el `.env` esté presente al momento de compilar).
+
+---
+
+## Requisitos del Sistema
+
+- **Python 3.11+** (Recomendado)
+- **Java JDK 17+** 
+  - Para desarrollo: Incluido en el entorno Conda.
+  - Para el Ejecutable: Instalación global en Windows requerida.
+- **Bibliotecas principales**: PySide6, pandas, openpyxl, mpxj, jpype1, workalendar.
+
+---
+
+## Documentación
+
+- **[BUILD.md](BUILD.md)** — Guía completa de compilación y distribución
+- **[STRUCTURE.md](STRUCTURE.md)** — Arquitectura detallada del proyecto
+- **[COMMANDS.md](COMMANDS.md)** — Sistema de Deshacer/Rehacer
+
+---
+
+## Contribuciones
+
+Las contribuciones son bienvenidas. Si desea mejorar la aplicación o añadir formatos de importación, puede abrir un Pull Request o un Issue.
+
+---
+
+## Licencia
+
+Este proyecto está bajo la licencia **GNU General Public License v3.0**. Ver el archivo [LICENSE](LICENSE) para más detalles.
+
+---
+
+**Desarrollado por [Rafael Hernández Bustamante](https://www.linkedin.com/in/rafaelhernandezbustamante)**
