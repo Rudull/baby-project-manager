@@ -1,20 +1,18 @@
 ## Road Map
 
-1. Ajustar bug que hace que no sea visible animacion de carga en complacion de windows
+1. Ajustar bug que hace que no sea visible animacion de carga en compilacion de windows
 2. Al importar tareas al diagrama de Gantt o Canva deberia agregaras el ID de la tarea a la venta de notas debajo del nombre de la tarea.
 3. Implementar filtro al diagrama de Gantt
 4. Colocar posibilidad de una fila adicional que permita ingrezar otro campo como nombre del responsable
-5. fecha inicio y fin de una tarea, cuando tiene subtareas debe ser la primer fecha de inicio de las subtareas, y la ultima fecha final de las subtareas
-6. Implementar que la tarea padre sea la superoposicion de las subtareas
-7. Implementar dias de escepsion
-8. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
-9. El scroll debe poder fuecionar sobre el diagrama de Gantt
-10. Implementar rodar tarea
-11. Implementar animacion cuando se cambia de periodo con la rueda del mouse
-12. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
-13. Fijar el desplazamento de el diagrama de Gantt con el derplazamiento de la lista de tareas (Solo falta un pequeño ajurte cundo se baja al maximo)
-14. Implementar arrastrar y soltar
-15. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+5. Implementar dias de escepsion
+6. Implementar forma de identificar el archivo *.bpm de tareas sobre el que se esta trabajando (Pestañas)
+7. El scroll debe poder fuecionar sobre el diagrama de Gantt
+8. Implementar rodar tarea
+9. Implementar animacion cuando se cambia de periodo con la rueda del mouse
+10. Dibujar linea de separacion de acuerdo al periodo selecciodo (Extender lineas vertivales da año al Gantt)
+11. Implementar arrastrar y soltar
+12. Implementar que el panel de la lista de tareas se pueda contraer a la izquierda y el diagram de Gantt se reescale al espacio disponible
+13. **[COMPLETADO]** Sistema de Alertas de Hitos y Recordatorios periódicos (Configuración global, por tarea y anti-saturación)
 
 
 pip install --upgrade pip

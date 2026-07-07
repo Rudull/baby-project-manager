@@ -1,81 +1,52 @@
+CONFIGURACIÓN DE ENTORNO JAVA PARA BABY PROJECT MANAGER
+=====================================================
 
-Paso 1: Verificar la instalación de Java en Windows
+Para que el programa pueda abrir archivos de Microsoft Project (.mpp), necesita Java. Existen dos configuraciones dependiendo de lo que quieras hacer:
 
-    Verificar si Java está instalado:
+--------------------------------------------------------------------------------
+1. INSTALACIÓN PARA DESARROLLO (RECOMENDADO)
+--------------------------------------------------------------------------------
+Esta es la opción si estás programando en VS Code o usando el entorno de Conda. Java se instala SOLO dentro de tu entorno virtual.
 
-    Abre una ventana de comandos (CMD) y ejecuta:
+Pasos:
+1. Abre tu terminal (Anaconda Prompt o PowerShell).
+2. Activa tu entorno:
+   conda activate baby
+3. Instala Java directamente con Conda:
+   conda install -c conda-forge openjdk
+   
+*Nota: El archivo 'environment_windows.yaml' ya incluye 'openjdk', por lo que si creas el entorno desde cero, este paso ya estará listo.*
 
-    cmd
+--------------------------------------------------------------------------------
+2. INSTALACIÓN PARA EL EJECUTABLE (.EXE)
+--------------------------------------------------------------------------------
+IMPORTANTE: El ejecutable que generas con el "build" necesita que Java esté instalado globalmente en Windows para poder funcionar. Sin esto, el reporte de errores o la apertura de archivos MPP fallará.
 
-java -version
+Pasos para configurar Java en Windows 10/11:
 
-y
+Paso A: Descargar el JDK
+1. Ve a: https://adoptium.net/ (Recomendado: Temurin 17 o 21 LTS).
+2. Descarga el instalador ".msi" para Windows x64.
+3. Ejecuta el instalador y asegúrate de marcar la casilla "Set JAVA_HOME variable" durante la instalación.
 
-cmd
+Paso B: Verificar o Configurar Variables de Entorno manualmente
+Si el instalador no lo hizo solo, hazlo tú:
+1. En el buscador de Windows escribe: "Variables de entorno" y selecciona "Editar las variables de entorno del sistema".
+2. Haz clic en el botón "Variables de entorno".
+3. En "Variables del sistema", haz clic en "Nueva":
+   - Nombre: JAVA_HOME
+   - Valor: C:\Program Files\Temurin\jdk-17... (La ruta donde lo instalaste).
+4. Busca la variable "Path" en la misma lista, selecciónala y dale a "Editar":
+   - Haz clic en "Nuevo" y añade: %JAVA_HOME%\bin
+5. Haz clic en "Aceptar" en todas las ventanas.
 
-    javac -version
+Paso C: Comprobar la instalación
+1. Abre una NUEVA terminal de PowerShell o CMD.
+2. Escribe: java -version
+3. Si responde con la versión de Java, el ejecutable ya funcionará correctamente.
 
-        Si ambos comandos muestran versiones, significa que tienes Java instalado.
-        Si recibes un mensaje de que el comando no se reconoce, necesitarás instalar el JDK.
-
-    Descargar e instalar el JDK si es necesario:
-
-        Descarga el Java Development Kit (JDK) desde el sitio oficial:
-            Descargar Oracle JDK
-
-        Asegúrate de descargar e instalar el JDK (no solo el JRE), ya que jvm.dll se incluye en el JDK.
-
-Paso 2: Configurar la variable de entorno JAVA_HOME
-
-    Encontrar la ruta de instalación del JDK:
-        Por defecto, el JDK se instala en C:\Program Files\Java\jdk-XX, donde XX es la versión de Java.
-        Por ejemplo, si tienes Java 23 instalado, la ruta podría ser C:\Program Files\Java\jdk-23.
-
-    Configurar JAVA_HOME:
-
-        Paso a paso:
-
-        a. Abrir Configuración de Variables de Entorno:
-            Haz clic derecho en "Este equipo" o "Mi PC" y selecciona Propiedades.
-            Selecciona Configuración avanzada del sistema.
-            En la pestaña Avanzado, haz clic en Variables de entorno....
-
-        b. Crear o editar JAVA_HOME:
-
-            En Variables del sistema, busca JAVA_HOME.
-
-            Si no existe, haz clic en Nueva....
-
-            Si existe, selecciónala y haz clic en Editar....
-
-            Establece:
-
-            yaml
-
-    Nombre de la variable: JAVA_HOME
-    Valor de la variable: C:\Program Files\Java\jdk-23
-
-    (Ajusta la ruta según tu instalación.)
-
-c. Agregar %JAVA_HOME%\bin al PATH:
-
-    En Variables del sistema, selecciona la variable Path y haz clic en Editar....
-
-    Haz clic en Nuevo y añade:
-
-    perl
-
-            %JAVA_HOME%\bin
-
-            Esto permite acceder a los comandos java y javac desde cualquier ubicación en la línea de comandos.
-
-            Navega hasta la carpeta donde se encuentran las librerías de Java y copia la ruta o path.
-            ejemplo: C:\Program Files\Java\jdk-23\bin
-            El el path de las variables de entorno del sistema haz clic en nuevo y pega la ruta o path.
-
-        d. Guardar los cambios:
-            Haz clic en Aceptar en todas las ventanas abiertas para aplicar los cambios.
-
-    Reiniciar aplicaciones y terminales:
-        Cierra y vuelve a abrir cualquier ventana de comandos o aplicaciones para que las nuevas variables de entorno tengan efecto.
-
+--------------------------------------------------------------------------------
+RESUMEN:
+- ¿Estás programando? -> Usa el Java de Conda (Opción 1).
+- ¿Vas a usar el .exe? -> Instala Java en Windows (Opción 2).
+--------------------------------------------------------------------------------

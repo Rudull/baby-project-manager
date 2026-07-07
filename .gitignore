@@ -1,4 +1,3 @@
-```gitignore
 # Python
 __pycache__/
 *.pyc
@@ -7,13 +6,22 @@ __pycache__/
 .Python
 *.so
 
+# Testing / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
 # IDEs
 .idea/
 .vscode/
+.agent/
+.agents/
 *.swp
 *.swo
 
-# Project files
+# Project files (user data — never commit sample projects/imports)
 *.ft
 *.mpp
 *.xlsx
@@ -49,8 +57,12 @@ Thumbs.db
 *.temp
 *.log
 
+# Secrets and Environment Variables
+.env
+secrets.json
+
 # Virtual environments
 venv/
 env/
 ENV/
-```
+.venv/

@@ -1,0 +1,9 @@
+# Baby Project Manager - Build/packaging tools
+# Needed only to freeze the app into a distributable executable, not to run it.
+# Install with: pip install -r requirements-build.txt
+-r requirements.txt
+
+PyInstaller>=5.7.0
+nuitka>=2.4.4
+ordered-set>=4.1.0
+zstandard>=0.21.0
