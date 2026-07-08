@@ -53,6 +53,7 @@ baby-project-manager/
 │   ├── build_to_distribution.py # Asistente interactivo (compilador/modo)
 │   ├── build_nuitka_windows.py
 │   ├── build_pyinstaller_windows.py
+│   ├── build_nuitka_linux.py
 │   ├── build_pyinstaller_linux.py
 │   └── check_windows_deps.py
 ├── README.md                   # Guía de inicio rápido
