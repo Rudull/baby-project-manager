@@ -463,6 +463,17 @@ def main():
 
         show_build_results(build_distribution=args.build_distribution)
 
+        # Package a onedir build into a .zip release asset for the auto-updater.
+        if onedir:
+            try:
+                sys.path.insert(0, str(Path(__file__).resolve().parent))
+                from release_packaging import package_onedir
+                dist_dir = (project_root / "distribution" / "dist"
+                            if args.build_distribution else project_root / "dist")
+                package_onedir(dist_dir, project_root, archive_format="zip", os_label="windows")
+            except Exception as e:
+                print(f"[!] Release packaging failed (build is fine): {e}")
+
     except KeyboardInterrupt:
         print("\nBuild cancelled by user")
         sys.exit(1)
