@@ -31,7 +31,14 @@ conda activate baby
 python build_system/build_pyinstaller_windows.py --clean
 ```
 
-### Linux/macOS
+### Linux/macOS (Nuitka)
+
+```bash
+conda activate baby
+python build_system/build_nuitka_linux.py --clean
+```
+
+### Linux/macOS (PyInstaller)
 
 ```bash
 conda activate baby
@@ -45,7 +52,7 @@ python build_system/build_pyinstaller_linux.py --clean
 - `--onedir` — Create folder bundle (default)
 - `--onefile` — Create single executable file
 - `--test` — Auto-launch executable for 5 seconds after build
-- `--compiler nuitka|pyinstaller` — Choose compiler (Windows, `build_to_distribution.py` only)
+- `--compiler nuitka|pyinstaller` — Choose compiler (`build_to_distribution.py` only)
 
 ## Output
 

@@ -10,7 +10,7 @@ Usage:
 
 Options:
     --platform PLATFORM    Target platform (windows, linux, auto) - default: auto
-    --compiler COMPILER    Compiler backend: pyinstaller or nuitka (Windows only) - default: pyinstaller
+    --compiler COMPILER    Compiler backend: pyinstaller or nuitka - default: pyinstaller
     --clean                Clean previous build files before building
     --debug                Create executable with debug output
     --onedir               Create one-directory bundle instead of one-file
@@ -70,6 +70,8 @@ def get_build_script_path(target_platform, compiler="pyinstaller"):
             return project_root / "build_system" / "build_nuitka_windows.py"
         return project_root / "build_system" / "build_pyinstaller_windows.py"
     else:
+        if compiler == "nuitka":
+            return project_root / "build_system" / "build_nuitka_linux.py"
         return project_root / "build_system" / "build_pyinstaller_linux.py"
 
 
@@ -203,7 +205,7 @@ def copy_additional_files():
     scripts_dir = dist_dir / "build_scripts"
     scripts_dir.mkdir(exist_ok=True)
     for script in ["build_pyinstaller_windows.py", "build_pyinstaller_linux.py",
-                   "build_nuitka_windows.py", "build_to_distribution.py"]:
+                   "build_nuitka_windows.py", "build_nuitka_linux.py", "build_to_distribution.py"]:
         src_script = project_root / "build_system" / script
         if src_script.exists():
             shutil.copy2(src_script, scripts_dir / script)
@@ -252,7 +254,12 @@ python build_scripts/build_nuitka_windows.py --clean
 python build_scripts/build_pyinstaller_windows.py --clean
 ```
 
-### Linux/macOS
+### Linux/macOS (Nuitka - Recommended)
+```bash
+python build_scripts/build_nuitka_linux.py --clean
+```
+
+### Linux/macOS (PyInstaller - Alternative)
 ```bash
 python build_scripts/build_pyinstaller_linux.py --clean
 ```
@@ -369,7 +376,7 @@ def main():
     parser.add_argument("--platform", choices=["windows", "linux", "auto"], default="auto",
                         help="Target platform (auto detects current OS)")
     parser.add_argument("--compiler", choices=["pyinstaller", "nuitka"],
-                        help="Compiler backend (Windows only; default: pyinstaller)")
+                        help="Compiler backend (default: pyinstaller)")
     parser.add_argument("--clean", action="store_true", help="Clean before building")
     parser.add_argument("--debug", action="store_true", help="Build with debug output")
     parser.add_argument("--onedir", action="store_true", help="Build as a folder (one-directory)")
@@ -389,14 +396,12 @@ def main():
         print(" INTERACTIVE BUILD CONFIGURATION")
         print("-" * 40)
 
-        if not args.compiler and target_platform == "windows":
+        if not args.compiler:
             print("\nSelect Compiler:")
             print("1. Nuitka (Recommended — fewer antivirus false positives)")
             print("2. PyInstaller (Alternative)")
             choice = input("Enter choice [1]: ").strip()
             args.compiler = "nuitka" if choice != "2" else "pyinstaller"
-        elif not args.compiler:
-            args.compiler = "pyinstaller"
 
         if not args.onedir and not args.onefile:
             print("\nSelect Output Type:")

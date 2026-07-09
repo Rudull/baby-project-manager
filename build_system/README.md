@@ -9,7 +9,8 @@ This directory contains scripts to create standalone executables for Baby Projec
   - `build_pyinstaller_windows.py` — Creates Windows executable with PyInstaller (Alternative)
   - `check_windows_deps.py` — Checks and fixes Windows dependencies
 - **Linux/macOS:**
-  - `build_pyinstaller_linux.py` — Creates Linux/macOS executable with PyInstaller
+  - `build_nuitka_linux.py` — Creates Linux/macOS executable with Nuitka **(Recommended)**
+  - `build_pyinstaller_linux.py` — Creates Linux/macOS executable with PyInstaller (Alternative)
 - **Distribution Packaging:**
   - `build_to_distribution.py` — Prepares complete distribution package (interactive orchestrator)
 
@@ -41,7 +42,14 @@ python build_nuitka_windows.py --clean
 python build_pyinstaller_windows.py --clean
 ```
 
-#### Linux/macOS
+#### Linux/macOS (Nuitka — Recommended)
+
+```bash
+conda activate baby
+python build_nuitka_linux.py --clean
+```
+
+#### Linux/macOS (PyInstaller — Alternative)
 
 ```bash
 conda activate baby
@@ -71,7 +79,7 @@ python build_to_distribution.py --compiler nuitka --onefile --clean --test
 - `--onedir` — Create one-directory bundle instead of one-file
 - `--onefile` — Create a single executable file
 - `--test` — Automatically launch the application for 5 seconds after build
-- `--compiler nuitka|pyinstaller` — Select compiler backend (Windows, `build_to_distribution.py` only)
+- `--compiler nuitka|pyinstaller` — Select compiler backend (`build_to_distribution.py` only)
 
 ## Output
 
@@ -106,6 +114,6 @@ pip install -r ../requirements.txt
 - **Java errors**: Ensure `JAVA_HOME` is set and points to a JDK (not just JRE).
 
 ### Linux/macOS
-- **Conda SSL or Expat errors**: Ensure your Conda environment is active (`conda activate baby`) before building. The Linux script bundles critical libs from `$CONDA_PREFIX` automatically.
+- **Conda SSL or Expat errors**: Ensure your Conda environment is active (`conda activate baby`) before building. Both Linux scripts bundle critical libs from `$CONDA_PREFIX` automatically.
 - **Missing system libraries**: `sudo apt install libxcb-cursor0 libnss3 libatk-bridge2.0-0`
 - **Permission denied on executable**: `chmod +x baby_project_manager`
