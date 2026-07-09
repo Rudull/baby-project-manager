@@ -43,6 +43,9 @@ setup_cx_freeze.py
 # cx_Freeze
 build_cx_freeze/
 
+# Nuitka
+nuitka-crash-report.xml
+
 # OS generated files
 .DS_Store
 .DS_Store?
