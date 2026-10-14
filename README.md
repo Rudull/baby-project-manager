@@ -50,18 +50,44 @@ Baby Project Manager se destaca por su ligereza y enfoque en lo esencial:
 git clone https://github.com/Rudull/baby-project-manager
 ```
 
-### 2. Configura el entorno (Recomendado: Conda/Anaconda)
-Este proyecto utiliza librerías de Java y Qt, por lo que Conda es la forma más sencilla de gestionar todas las dependencias:
+### 2. Configura el entorno
+
+#### Opción A (Recomendada): Conda/Anaconda
+Este proyecto utiliza librerías de Java y Qt, por lo que Conda es la forma más sencilla de gestionar todas las dependencias. El entorno siempre se llama `baby`:
 
 ```bash
-# Crear el entorno desde el archivo de configuración
+# Windows: crear el entorno desde el archivo de configuración
 conda env create -f environment_windows.yaml
 
-# Activar el entorno
+# Linux: crear el entorno desde el archivo de configuración
+conda env create -f environment_linux.yaml
+
+# Activar el entorno (mismo nombre en ambos sistemas)
 conda activate baby
 ```
 
 *Nota: La configuración de Conda ya incluye el JDK de Java necesario para desarrollo.*
+
+#### Opción B: venv + pip
+Alternativa sin Conda. Requiere tener Python 3.11+ y el JDK de Java instalados globalmente (ver [docs/Configuracion de entorno virtual de Java.txt](docs/Configuracion%20de%20entorno%20virtual%20de%20Java.txt)):
+
+```powershell
+# Crear el entorno virtual en la raíz del proyecto
+python -m venv .venv
+
+# Activarlo (Windows PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Activarlo (Linux/macOS)
+source .venv/bin/activate
+
+# Instalar dependencias de runtime o de desarrollo
+pip install -r requirements.txt
+pip install -r requirements-dev.txt  # incluye runtime + herramientas de test/lint
+```
+
+#### VS Code
+El proyecto incluye `.vscode/settings.json` con `python.defaultInterpreterPath` apuntando al intérprete de Conda (`miniconda3\envs\baby\python.exe`). Si usas venv u otra ruta de Conda, ajusta esa propiedad al Python del entorno que creaste.
 
 ### 3. Configura los secretos
 - Copia `.env.example` como `.env` y añade tu URL de Webhook de Discord para habilitar los reportes directos desde la app. Esto es necesario tanto para desarrollo como para que el ejecutable compilado tenga soporte de reportes.
